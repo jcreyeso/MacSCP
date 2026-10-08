@@ -15,3 +15,4 @@ Package.resolved
 # App cache / temporary files
 *.swp
 *~
+dist/
