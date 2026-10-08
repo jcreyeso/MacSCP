@@ -1,0 +1,370 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000000000000000000001 /* MacSCPApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* MacSCPApp.swift */; };
+		B10000000000000000000002 /* SSHConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* SSHConnection.swift */; };
+		B10000000000000000000003 /* FileItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* FileItem.swift */; };
+		B10000000000000000000004 /* TransferProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000004 /* TransferProgress.swift */; };
+		B10000000000000000000005 /* SSHConfigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000005 /* SSHConfigParser.swift */; };
+		B10000000000000000000006 /* SFTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* SFTPClient.swift */; };
+		B10000000000000000000007 /* LocalFileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* LocalFileManager.swift */; };
+		B10000000000000000000008 /* FileWatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* FileWatchService.swift */; };
+		B10000000000000000000009 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* AppViewModel.swift */; };
+		B1000000000000000000000A /* PathHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* PathHeaderView.swift */; };
+		B1000000000000000000000B /* FileBrowserPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* FileBrowserPanel.swift */; };
+		B1000000000000000000000C /* ConnectionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000C /* ConnectionsSheet.swift */; };
+		B1000000000000000000000D /* RemoteCopySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000D /* RemoteCopySheet.swift */; };
+		B1000000000000000000000E /* TransferProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000E /* TransferProgressView.swift */; };
+		B1000000000000000000000F /* ToastBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* ToastBannerView.swift */; };
+		B10000000000000000000010 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* MainView.swift */; };
+		B10000000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000020 /* MacSCP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacSCP.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F10000000000000000000001 /* MacSCPApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSCPApp.swift; sourceTree = "<group>"; };
+		F10000000000000000000002 /* SSHConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConnection.swift; sourceTree = "<group>"; };
+		F10000000000000000000003 /* FileItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileItem.swift; sourceTree = "<group>"; };
+		F10000000000000000000004 /* TransferProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferProgress.swift; sourceTree = "<group>"; };
+		F10000000000000000000005 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
+		F10000000000000000000006 /* SFTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPClient.swift; sourceTree = "<group>"; };
+		F10000000000000000000007 /* LocalFileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileManager.swift; sourceTree = "<group>"; };
+		F10000000000000000000008 /* FileWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatchService.swift; sourceTree = "<group>"; };
+		F10000000000000000000009 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
+		F1000000000000000000000A /* PathHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathHeaderView.swift; sourceTree = "<group>"; };
+		F1000000000000000000000B /* FileBrowserPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserPanel.swift; sourceTree = "<group>"; };
+		F1000000000000000000000C /* ConnectionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionsSheet.swift; sourceTree = "<group>"; };
+		F1000000000000000000000D /* RemoteCopySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCopySheet.swift; sourceTree = "<group>"; };
+		F1000000000000000000000E /* TransferProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferProgressView.swift; sourceTree = "<group>"; };
+		F1000000000000000000000F /* ToastBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBannerView.swift; sourceTree = "<group>"; };
+		F10000000000000000000010 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		F10000000000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F10000000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F10000000000000000000013 /* MacSCP.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MacSCP.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000012 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000003 = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000005 /* MacSCP */,
+				A10000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000020 /* MacSCP.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000005 /* MacSCP */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000001 /* MacSCPApp.swift */,
+				A10000000000000000000006 /* Models */,
+				A10000000000000000000007 /* Services */,
+				A10000000000000000000008 /* ViewModels */,
+				A10000000000000000000009 /* Views */,
+				A1000000000000000000000A /* Resources */,
+			);
+			path = MacSCP;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000006 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000002 /* SSHConnection.swift */,
+				F10000000000000000000003 /* FileItem.swift */,
+				F10000000000000000000004 /* TransferProgress.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000007 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000005 /* SSHConfigParser.swift */,
+				F10000000000000000000006 /* SFTPClient.swift */,
+				F10000000000000000000007 /* LocalFileManager.swift */,
+				F10000000000000000000008 /* FileWatchService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000008 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000009 /* AppViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000009 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000010 /* MainView.swift */,
+				F1000000000000000000000A /* PathHeaderView.swift */,
+				F1000000000000000000000B /* FileBrowserPanel.swift */,
+				F1000000000000000000000C /* ConnectionsSheet.swift */,
+				F1000000000000000000000D /* RemoteCopySheet.swift */,
+				F1000000000000000000000E /* TransferProgressView.swift */,
+				F1000000000000000000000F /* ToastBannerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A1000000000000000000000A /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000011 /* Assets.xcassets */,
+				F10000000000000000000012 /* Info.plist */,
+				F10000000000000000000013 /* MacSCP.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000002 /* MacSCP */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C10000000000000000000002 /* Build configuration list for PBXNativeTarget "MacSCP" */;
+			buildPhases = (
+				A10000000000000000000010 /* Sources */,
+				A10000000000000000000012 /* Frameworks */,
+				A10000000000000000000011 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MacSCP;
+			productName = MacSCP;
+			productReference = A10000000000000000000020 /* MacSCP.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = C10000000000000000000001 /* Build configuration list for PBXProject "MacSCP" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = es;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				es,
+				Base,
+			);
+			mainGroup = A10000000000000000000003;
+			productRefGroup = A10000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10000000000000000000002 /* MacSCP */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000011 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000011 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000001 /* MacSCPApp.swift in Sources */,
+				B10000000000000000000002 /* SSHConnection.swift in Sources */,
+				B10000000000000000000003 /* FileItem.swift in Sources */,
+				B10000000000000000000004 /* TransferProgress.swift in Sources */,
+				B10000000000000000000005 /* SSHConfigParser.swift in Sources */,
+				B10000000000000000000006 /* SFTPClient.swift in Sources */,
+				B10000000000000000000007 /* LocalFileManager.swift in Sources */,
+				B10000000000000000000008 /* FileWatchService.swift in Sources */,
+				B10000000000000000000009 /* AppViewModel.swift in Sources */,
+				B1000000000000000000000A /* PathHeaderView.swift in Sources */,
+				B1000000000000000000000B /* FileBrowserPanel.swift in Sources */,
+				B1000000000000000000000C /* ConnectionsSheet.swift in Sources */,
+				B1000000000000000000000D /* RemoteCopySheet.swift in Sources */,
+				B1000000000000000000000E /* TransferProgressView.swift in Sources */,
+				B1000000000000000000000F /* ToastBannerView.swift in Sources */,
+				B10000000000000000000010 /* MainView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		R100000000000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = "wholemodule";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		D10000000000000000000002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MacSCP/Resources/MacSCP.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MacSCP/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.macscp.MacSCP;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		R100000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MacSCP/Resources/MacSCP.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MacSCP/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.macscp.MacSCP;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C10000000000000000000001 /* Build configuration list for PBXProject "MacSCP" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D10000000000000000000001 /* Debug */,
+				R100000000000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C10000000000000000000002 /* Build configuration list for PBXNativeTarget "MacSCP" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D10000000000000000000002 /* Debug */,
+				R100000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = A10000000000000000000001 /* Project object */;
+}
+

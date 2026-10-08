@@ -1,0 +1,17 @@
+# Xcode & macOS
+.DS_Store
+*/.DS_Store
+**/xcuserdata/
+*.xcuserstate
+project.xcworkspace/xcuserdata/
+*.moved-aside
+DerivedData/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# App cache / temporary files
+*.swp
+*~
