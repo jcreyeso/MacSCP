@@ -19,7 +19,8 @@ let package = Package(
                 "Resources/MacSCP.entitlements"
             ],
             resources: [
-                .process("Resources/Assets.xcassets")
+                .process("Resources/Assets.xcassets"),
+                .process("Resources/AppIcon.icns")
             ]
         )
     ]

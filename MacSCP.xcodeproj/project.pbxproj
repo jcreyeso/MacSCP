@@ -24,11 +24,12 @@
 		B1000000000000000000000F /* ToastBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000F /* ToastBannerView.swift */; };
 		B10000000000000000000010 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* MainView.swift */; };
 		B10000000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* Assets.xcassets */; };
+		B10000000000000000000014 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000014 /* AppIcon.icns */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000020 /* MacSCP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacSCP.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F10000000000000000000001 /* MacSCPApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSCPApp.swift; sourceTree = "<group>"; };
+		F10000000000000000000001 /* MacSCPApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/MacSCPApp.swift; sourceTree = "<group>"; };
 		F10000000000000000000002 /* SSHConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConnection.swift; sourceTree = "<group>"; };
 		F10000000000000000000003 /* FileItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileItem.swift; sourceTree = "<group>"; };
 		F10000000000000000000004 /* TransferProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferProgress.swift; sourceTree = "<group>"; };
@@ -47,6 +48,7 @@
 		F10000000000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F10000000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F10000000000000000000013 /* MacSCP.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MacSCP.entitlements; sourceTree = "<group>"; };
+		F10000000000000000000014 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				F10000000000000000000011 /* Assets.xcassets */,
+				F10000000000000000000014 /* AppIcon.icns */,
 				F10000000000000000000012 /* Info.plist */,
 				F10000000000000000000013 /* MacSCP.entitlements */,
 			);
@@ -196,6 +199,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000000000000000000011 /* Assets.xcassets in Resources */,
+				B10000000000000000000014 /* AppIcon.icns in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
