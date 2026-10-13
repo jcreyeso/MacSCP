@@ -36,6 +36,7 @@ public final class AppViewModel: ObservableObject {
     @Published public var connections: [SSHConnection] = []
     @Published public var connectionSearchText: String = ""
     @Published public var isConnecting: Bool = false
+    @Published public var isElevatingToSudo: Bool = false
     @Published public var currentConnection: SSHConnection?
     @Published public var isShowingConnectionsSheet: Bool = false
     
@@ -162,18 +163,22 @@ public final class AppViewModel: ObservableObject {
                 self.loadRemoteSortSettings()
                 self.loadRemoteCopyRecentPaths()
                 self.isConnecting = false
+                self.isElevatingToSudo = false
                 self.isShowingConnectionsSheet = false
                 self.showToast(self.isSpanish ? "Conectado a \(connection.alias)" : "Connected to \(connection.alias)", type: .success)
                 
                 await self.loadRemoteFiles()
             } catch {
                 self.isConnecting = false
+                self.isElevatingToSudo = false
                 self.showToast(self.isSpanish ? "Error conectando a \(connection.alias): \(error.localizedDescription)" : "Error connecting to \(connection.alias): \(error.localizedDescription)", type: .error)
             }
         }
     }
     
     public func connectWithSudo(to connection: SSHConnection) {
+        guard !isConnecting else { return }
+        isElevatingToSudo = true
         var sudoConn = connection
         sudoConn.useSudoSFTP = true
         connect(to: sudoConn)

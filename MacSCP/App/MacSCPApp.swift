@@ -9,7 +9,7 @@ public enum AppVersion {
     public static let githubURL = URL(string: "https://github.com/jcreyeso/MacSCP")!
     
     public static var displayString: String {
-        return "Versión \(marketingVersion) (\(buildNumber))"
+        return "\(LocalizationService.shared.t(.versionLabel)) \(marketingVersion) (\(buildNumber))"
     }
     
     @MainActor

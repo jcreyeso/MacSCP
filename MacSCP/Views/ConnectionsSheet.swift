@@ -100,9 +100,6 @@ public struct ConnectionsSheet: View {
                         isConnecting: viewModel.isConnecting,
                         onConnect: {
                             viewModel.connect(to: connection)
-                        },
-                        onConnectWithSudo: {
-                            viewModel.connectWithSudo(to: connection)
                         }
                     )
                     .padding(.vertical, 4)
@@ -187,7 +184,6 @@ struct ConnectionRowView: View {
     let isCurrent: Bool
     let isConnecting: Bool
     let onConnect: () -> Void
-    let onConnectWithSudo: () -> Void
     @ObservedObject private var l10n = LocalizationService.shared
     
     var body: some View {
@@ -252,23 +248,14 @@ struct ConnectionRowView: View {
             
             Spacer()
             
-            Menu {
-                Button(action: onConnect) {
-                    Label(l10n.currentLanguage == .spanish ? "Conectar normal (SFTP)" : "Connect normal (SFTP)", systemImage: "person.fill")
-                }
-                Button(action: onConnectWithSudo) {
-                    Label(l10n.currentLanguage == .spanish ? "Conectar con Sudo (SFTP root)" : "Connect with Sudo (SFTP root)", systemImage: "lock.shield.fill")
-                }
-            } label: {
+            Button(action: onConnect) {
                 if isCurrent {
                     Text(l10n.currentLanguage == .spanish ? "Reconectar" : "Reconnect")
                 } else {
                     Text(l10n[.connect])
                 }
-            } primaryAction: {
-                onConnect()
             }
-            .menuStyle(.borderedButton)
+            .buttonStyle(.bordered)
             .disabled(isConnecting)
         }
         .contentShape(Rectangle())

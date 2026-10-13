@@ -289,9 +289,18 @@ public struct MainView: View {
                     Button(action: {
                         viewModel.connectWithSudo(to: conn)
                     }) {
-                        Label(l10n.currentLanguage == .spanish ? "Elevar a Sudo" : "Elevate to Sudo", systemImage: "lock.shield")
+                        if viewModel.isElevatingToSudo {
+                            HStack(spacing: 6) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text(l10n.currentLanguage == .spanish ? "Elevando a Sudo..." : "Elevating to Sudo...")
+                            }
+                        } else {
+                            Label(l10n.currentLanguage == .spanish ? "Elevar a Sudo" : "Elevate to Sudo", systemImage: "lock.shield")
+                        }
                     }
                     .buttonStyle(.bordered)
+                    .disabled(viewModel.isConnecting)
                     .help(l10n.currentLanguage == .spanish ? "Reiniciar sesión SFTP con privilegios de superusuario (root)" : "Restart SFTP session with superuser (root) privileges")
                 }
                 
