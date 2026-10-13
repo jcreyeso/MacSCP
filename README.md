@@ -34,7 +34,7 @@ A native, lightweight, and modern macOS file transfer client inspired by WinSCP.
    - Distinctive visual banner and badges when operating in Sudo mode.
 
 5. **In-Server Remote-to-Remote Copy**:
-   - Right-click any remote file or folder > **"Copiar a otra ubicación en servidor..."** (Copy to another location on server...).
+   - Right-click any remote file or folder > **"Copy to another location on server..."**.
    - Executes server-side (`cp -r`) via SSH instantly without consuming your local Mac's bandwidth.
    - **Recent Paths History**: Automatically remembers the last 10 destination paths for quick selection and reuse.
 
@@ -52,6 +52,10 @@ A native, lightweight, and modern macOS file transfer client inspired by WinSCP.
    - Right-click on any path bar to instantly copy the path to the clipboard.
    - Double-click path bar to directly type or edit absolute/relative paths.
    - Up-one-level (`..`) and refresh buttons.
+
+9. **Multi-Language Support (Localization)**:
+   - Built-in dynamic localization supporting English and Spanish.
+   - Switch language on the fly via Settings (`Cmd + ,`) without restarting the app.
 
 ---
 
@@ -113,7 +117,8 @@ MacScp/
 │   │   ├── SSHConfigParser.swift  # ~/.ssh/config reader & parser
 │   │   ├── SFTPClient.swift       # Native SFTP client over SSH subsystem
 │   │   ├── LocalFileManager.swift # Local filesystem manager
-│   │   └── FileWatchService.swift # Live filesystem watcher for remote editing
+│   │   ├── FileWatchService.swift # Live filesystem watcher for remote editing
+│   │   └── LocalizationService.swift # In-app language localization manager
 │   ├── ViewModels/
 │   │   └── AppViewModel.swift     # Central state coordinator & business logic
 │   ├── Views/
@@ -122,6 +127,7 @@ MacScp/
 │   │   ├── PathHeaderView.swift   # Breadcrumb path bar & actions
 │   │   ├── ConnectionsSheet.swift # SSH connections selector & manager
 │   │   ├── RemoteCopySheet.swift  # Server-side copy dialog with recent paths
+│   │   ├── SettingsView.swift     # Preferences and language selection dialog
 │   │   ├── TransferProgressView.swift # Transfer progress & speed banner
 │   │   └── ToastBannerView.swift  # Floating notification banners
 │   └── Resources/
