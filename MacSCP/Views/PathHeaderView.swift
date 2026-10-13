@@ -14,6 +14,7 @@ public struct PathHeaderView: View {
     public let onToggleFavorite: ((String) -> Void)?
     public let onRemoveFavorite: ((String) -> Void)?
     public let onCreateFolder: (() -> Void)?
+    public let onRename: (() -> Void)?
     
     @ObservedObject private var l10n = LocalizationService.shared
     @State private var inputPath: String = ""
@@ -30,7 +31,8 @@ public struct PathHeaderView: View {
         onGoHome: (() -> Void)? = nil,
         onToggleFavorite: ((String) -> Void)? = nil,
         onRemoveFavorite: ((String) -> Void)? = nil,
-        onCreateFolder: (() -> Void)? = nil
+        onCreateFolder: (() -> Void)? = nil,
+        onRename: (() -> Void)? = nil
     ) {
         self.title = title
         self._currentPath = currentPath
@@ -43,6 +45,7 @@ public struct PathHeaderView: View {
         self.onToggleFavorite = onToggleFavorite
         self.onRemoveFavorite = onRemoveFavorite
         self.onCreateFolder = onCreateFolder
+        self.onRename = onRename
     }
     
     public var body: some View {
@@ -92,6 +95,17 @@ public struct PathHeaderView: View {
                     .buttonStyle(.borderless)
                     .disabled(!showPathInput)
                     .help(l10n[.newFolder])
+                }
+                
+                // Rename
+                if let onRename = onRename {
+                    Button(action: onRename) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(!showPathInput)
+                    .help(l10n[.rename])
                 }
             }
             .padding(.horizontal, 8)

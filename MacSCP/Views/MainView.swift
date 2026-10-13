@@ -80,6 +80,9 @@ public struct MainView: View {
                             onCreateFolder: { name in
                                 viewModel.createLocalFolder(named: name)
                             },
+                            onRename: { item, newName in
+                                viewModel.renameLocalItem(item, to: newName)
+                            },
                             onUpload: { item in
                                 viewModel.uploadLocalItem(item)
                             },
@@ -140,6 +143,9 @@ public struct MainView: View {
                             },
                             onCreateFolder: { name in
                                 viewModel.createRemoteFolder(named: name)
+                            },
+                            onRename: { item, newName in
+                                viewModel.renameRemoteItem(item, to: newName)
                             },
                             onDownload: { item in
                                 viewModel.downloadRemoteItem(item)

@@ -71,6 +71,9 @@ public enum L10nKey: String, CaseIterable {
     case copyPath
     case addToFavorites
     case delete
+    case rename
+    case newName
+    case renameItemPrompt
     case itemsCount
     case singleItem
     case selectedCount
@@ -248,6 +251,9 @@ public final class LocalizationService: ObservableObject {
             .copyPath: "Copiar ruta",
             .addToFavorites: "Añadir a favoritos",
             .delete: "Eliminar",
+            .rename: "Renombrar",
+            .newName: "Nuevo nombre:",
+            .renameItemPrompt: "Ingresa el nuevo nombre para:",
             .itemsCount: "%d elementos",
             .singleItem: "1 elemento",
             .selectedCount: "%d seleccionados",
@@ -375,6 +381,9 @@ public final class LocalizationService: ObservableObject {
             .copyPath: "Copy path",
             .addToFavorites: "Add to favorites",
             .delete: "Delete",
+            .rename: "Rename",
+            .newName: "New name:",
+            .renameItemPrompt: "Enter new name for:",
             .itemsCount: "%d items",
             .singleItem: "1 item",
             .selectedCount: "%d selected",

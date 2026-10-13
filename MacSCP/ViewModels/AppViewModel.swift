@@ -824,6 +824,100 @@ public final class AppViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Rename Operations (Local & Remote)
+    
+    public func renameLocalItem(_ item: FileItem, to newName: String) {
+        guard !item.isParentDirectory else { return }
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showToast(isSpanish ? "El nuevo nombre no puede estar vacío" : "New name cannot be empty", type: .error)
+            return
+        }
+        guard !trimmed.contains("/") && !trimmed.contains(":") else {
+            showToast(isSpanish ? "El nombre no puede contener '/' o ':'" : "Name cannot contain '/' or ':'", type: .error)
+            return
+        }
+        guard trimmed != "." && trimmed != ".." else {
+            showToast(isSpanish ? "Nombre no válido" : "Invalid name", type: .error)
+            return
+        }
+        guard trimmed != item.name else {
+            return
+        }
+        
+        let label = item.isDirectory ? (isSpanish ? "carpeta" : "folder") : (isSpanish ? "archivo" : "file")
+        do {
+            try localManager.renameItem(at: item.path, to: trimmed)
+            let parent = (item.path as NSString).deletingLastPathComponent
+            let newPath = (parent as NSString).appendingPathComponent(trimmed)
+            
+            if let favIndex = localFavorites.firstIndex(of: item.path) {
+                localFavorites[favIndex] = newPath
+                UserDefaults.standard.set(localFavorites, forKey: localFavoritesKey)
+            }
+            
+            showToast(isSpanish ? "✓ \(label.capitalized) renombrado a '\(trimmed)'" : "✓ \(label.capitalized) renamed to '\(trimmed)'", type: .success)
+            loadLocalFiles()
+            selectedLocalPath = newPath
+        } catch {
+            showToast(isSpanish ? "Error al renombrar \(label): \(error.localizedDescription)" : "Error renaming \(label): \(error.localizedDescription)", type: .error)
+        }
+    }
+    
+    public func renameRemoteItem(_ item: FileItem, to newName: String) {
+        guard currentConnection != nil, !item.isParentDirectory else { return }
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showToast(isSpanish ? "El nuevo nombre no puede estar vacío" : "New name cannot be empty", type: .error)
+            return
+        }
+        guard !trimmed.contains("/") else {
+            showToast(isSpanish ? "El nombre no puede contener '/'" : "Name cannot contain '/'", type: .error)
+            return
+        }
+        guard trimmed != "." && trimmed != ".." else {
+            showToast(isSpanish ? "Nombre no válido" : "Invalid name", type: .error)
+            return
+        }
+        guard trimmed != item.name else {
+            return
+        }
+        
+        let parent = (item.path as NSString).deletingLastPathComponent
+        let targetPath: String
+        if parent == "/" || parent.isEmpty {
+            targetPath = "/\(trimmed)"
+        } else {
+            targetPath = "\(parent)/\(trimmed)"
+        }
+        
+        let label = item.isDirectory ? (isSpanish ? "carpeta" : "folder") : (isSpanish ? "archivo" : "file")
+        showToast(isSpanish ? "Renombrando \(label) '\(item.name)'..." : "Renaming \(label) '\(item.name)'...", type: .info)
+        
+        Task {
+            do {
+                try await sftpClient.rename(oldPath: item.path, newPath: targetPath)
+                self.showToast(self.isSpanish ? "✓ \(label.capitalized) renombrado a '\(trimmed)'" : "✓ \(label.capitalized) renamed to '\(trimmed)'", type: .success)
+                
+                if let favIndex = self.remoteFavorites.firstIndex(of: item.path) {
+                    self.remoteFavorites[favIndex] = targetPath
+                    UserDefaults.standard.set(self.remoteFavorites, forKey: self.remoteFavoritesKey)
+                }
+                
+                await self.loadRemoteFiles()
+                self.selectedRemotePath = targetPath
+            } catch let sftpError as SFTPError {
+                if case .sftpStatusError(let code, _) = sftpError, code == 3 {
+                    self.showToast(self.isSpanish ? "Permiso denegado al renombrar. Considera elevar la sesión a Sudo." : "Permission denied renaming. Consider elevating session to Sudo.", type: .error)
+                } else {
+                    self.showToast(self.isSpanish ? "Error al renombrar \(label): \(sftpError.localizedDescription)" : "Error renaming \(label): \(sftpError.localizedDescription)", type: .error)
+                }
+            } catch {
+                self.showToast(self.isSpanish ? "Error al renombrar \(label): \(error.localizedDescription)" : "Error renaming \(label): \(error.localizedDescription)", type: .error)
+            }
+        }
+    }
+    
     // MARK: - Remote-to-Remote Quick Copy (Requirement 5)
     
     private var remoteCopyRecentPathsKey: String {

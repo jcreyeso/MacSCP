@@ -3,7 +3,7 @@ import AppKit
 
 // MARK: - App Version Configuration
 public enum AppVersion {
-    public static let marketingVersion = "1.1.0"
+    public static let marketingVersion = "1.2.0"
     public static let buildNumber = "2026.10.13"
     public static let appName = "MacSCP"
     public static let githubURL = URL(string: "https://github.com/jcreyeso/MacSCP")!

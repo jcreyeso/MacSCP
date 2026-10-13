@@ -590,6 +590,25 @@ public actor SFTPClient {
         }
     }
     
+    /// Renames a file or directory on the remote server via SSH_FXP_RENAME.
+    public func rename(oldPath: String, newPath: String) throws {
+        let reqId = nextRequestId()
+        var payload = reqId.bigEndianBytes
+        payload.append(contentsOf: encodeString(oldPath))
+        payload.append(contentsOf: encodeString(newPath))
+        
+        try sendPacket(type: SSH_FXP_RENAME, payload: payload)
+        let (respType, respPayload) = try readPacket()
+        if respType == SSH_FXP_STATUS {
+            let (code, msg) = parseStatusPacket(respPayload)
+            if code != SSH_FX_OK {
+                throw SFTPError.sftpStatusError(code: code, message: msg)
+            }
+        } else {
+            throw SFTPError.protocolError("Respuesta inesperada al renombrar: tipo \(respType)")
+        }
+    }
+    
     /// Deletes a file on the remote server.
     public func deleteFile(path: String) throws {
         let reqId = nextRequestId()

@@ -25,6 +25,7 @@ public struct FileBrowserPanel: View {
     
     // Actions
     public let onCreateFolder: ((String) -> Void)?
+    public let onRename: ((FileItem, String) -> Void)?
     public let onUpload: ((FileItem) -> Void)?
     public let onDownload: ((FileItem) -> Void)?
     public let onEditInNextpad: ((FileItem) -> Void)?
@@ -36,6 +37,8 @@ public struct FileBrowserPanel: View {
     @ObservedObject private var l10n = LocalizationService.shared
     @State private var isShowingNewFolderDialog: Bool = false
     @State private var newFolderName: String = ""
+    @State private var renamingItemPath: String? = nil
+    @State private var inlineEditingName: String = ""
     
     public init(
         isRemote: Bool,
@@ -57,6 +60,7 @@ public struct FileBrowserPanel: View {
         onToggleFavorite: ((String) -> Void)? = nil,
         onRemoveFavorite: ((String) -> Void)? = nil,
         onCreateFolder: ((String) -> Void)? = nil,
+        onRename: ((FileItem, String) -> Void)? = nil,
         onUpload: ((FileItem) -> Void)? = nil,
         onDownload: ((FileItem) -> Void)? = nil,
         onEditInNextpad: ((FileItem) -> Void)? = nil,
@@ -84,6 +88,7 @@ public struct FileBrowserPanel: View {
         self.onToggleFavorite = onToggleFavorite
         self.onRemoveFavorite = onRemoveFavorite
         self.onCreateFolder = onCreateFolder
+        self.onRename = onRename
         self.onUpload = onUpload
         self.onDownload = onDownload
         self.onEditInNextpad = onEditInNextpad
@@ -110,6 +115,12 @@ public struct FileBrowserPanel: View {
                 onCreateFolder: onCreateFolder != nil ? {
                     newFolderName = ""
                     isShowingNewFolderDialog = true
+                } : nil,
+                onRename: onRename != nil ? {
+                    if let path = selectedPath,
+                       let item = items.first(where: { $0.path == path && !$0.isParentDirectory }) {
+                        startRename(for: item)
+                    }
                 } : nil
             )
             .background(Color(NSColor.windowBackgroundColor))
@@ -157,11 +168,21 @@ public struct FileBrowserPanel: View {
                     FileRowView(
                         item: item,
                         isRemote: isRemote,
+                        isRenaming: renamingItemPath == item.path,
+                        editingName: $inlineEditingName,
+                        onCommitRename: { newName in
+                            commitInlineRename(for: item, newName: newName)
+                        },
+                        onCancelRename: {
+                            cancelInlineRename()
+                        },
                         onDoubleClick: { onDoubleClick(item) }
                     )
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2) {
-                        onDoubleClick(item)
+                        if renamingItemPath != item.path {
+                            onDoubleClick(item)
+                        }
                     }
                     .contextMenu {
                         buildContextMenu(for: item)
@@ -188,6 +209,9 @@ public struct FileBrowserPanel: View {
             Text(isRemote 
                  ? (l10n.currentLanguage == .spanish ? "Ingresa el nombre para la nueva carpeta en el servidor:" : "Enter name for the new folder on the server:")
                  : (l10n.currentLanguage == .spanish ? "Ingresa el nombre para la nueva carpeta en tu Mac:" : "Enter name for the new folder on your Mac:"))
+        }
+        .onChange(of: currentPath) { _ in
+            cancelInlineRename()
         }
     }
     
@@ -336,6 +360,15 @@ public struct FileBrowserPanel: View {
                     Label(l10n[.copyToAnotherLocation], systemImage: "doc.on.doc")
                 }
                 
+                // Rename
+                if onRename != nil {
+                    Button(action: {
+                        startRename(for: item)
+                    }) {
+                        Label(l10n[.rename], systemImage: "pencil")
+                    }
+                }
+                
                 Divider()
                 
                 // Delete
@@ -385,6 +418,15 @@ public struct FileBrowserPanel: View {
                     Label(l10n.currentLanguage == .spanish ? "Mostrar en Finder" : "Show in Finder", systemImage: "macwindow")
                 }
                 
+                // Rename
+                if onRename != nil {
+                    Button(action: {
+                        startRename(for: item)
+                    }) {
+                        Label(l10n[.rename], systemImage: "pencil")
+                    }
+                }
+                
                 Divider()
                 
                 // Delete
@@ -407,13 +449,41 @@ public struct FileBrowserPanel: View {
             }
         }
     }
+    
+    private func startRename(for item: FileItem) {
+        guard !item.isParentDirectory else { return }
+        selectedPath = item.path
+        inlineEditingName = item.name
+        renamingItemPath = item.path
+    }
+    
+    private func commitInlineRename(for item: FileItem, newName: String) {
+        guard renamingItemPath == item.path else { return }
+        renamingItemPath = nil
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        inlineEditingName = ""
+        if !trimmed.isEmpty && trimmed != item.name {
+            onRename?(item, trimmed)
+        }
+    }
+    
+    private func cancelInlineRename() {
+        renamingItemPath = nil
+        inlineEditingName = ""
+    }
 }
 
 /// Row representing a file or folder item with folder/file icons and file extension (Requirement 6).
 struct FileRowView: View {
     let item: FileItem
     let isRemote: Bool
+    let isRenaming: Bool
+    @Binding var editingName: String
+    let onCommitRename: (String) -> Void
+    let onCancelRename: () -> Void
     let onDoubleClick: () -> Void
+    
+    @FocusState private var isRenameFocused: Bool
     
     var body: some View {
         HStack(spacing: 8) {
@@ -422,12 +492,44 @@ struct FileRowView: View {
                 .font(.system(size: 14))
                 .frame(width: 18)
             
-            // File / Folder Name
-            Text(item.name)
-                .font(.system(size: 13))
-                .foregroundColor(item.isParentDirectory ? .accentColor : .primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            // File / Folder Name or Inline TextField
+            if isRenaming {
+                TextField("", text: $editingName)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(3)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color.accentColor, lineWidth: 1.5)
+                    )
+                    .frame(minWidth: 100, maxWidth: 320, alignment: .leading)
+                    .focused($isRenameFocused)
+                    .onSubmit {
+                        onCommitRename(editingName)
+                    }
+                    .onExitCommand {
+                        onCancelRename()
+                    }
+                    .onChange(of: isRenameFocused) { focused in
+                        if !focused && isRenaming {
+                            onCommitRename(editingName)
+                        }
+                    }
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            isRenameFocused = true
+                        }
+                    }
+            } else {
+                Text(item.name)
+                    .font(.system(size: 13))
+                    .foregroundColor(item.isParentDirectory ? .accentColor : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             
             Spacer()
             

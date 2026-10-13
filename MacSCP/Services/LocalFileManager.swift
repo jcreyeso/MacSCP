@@ -80,6 +80,13 @@ public final class LocalFileManager {
         try fileManager.createDirectory(atPath: target, withIntermediateDirectories: false)
     }
     
+    /// Renames a file or directory at the given path to a new name in the same parent directory.
+    public func renameItem(at path: String, to newName: String) throws {
+        let parent = (path as NSString).deletingLastPathComponent
+        let target = (parent as NSString).appendingPathComponent(newName)
+        try fileManager.moveItem(atPath: path, toPath: target)
+    }
+    
     /// Deletes the item at the given path.
     public func deleteItem(at path: String) throws {
         try fileManager.removeItem(atPath: path)
