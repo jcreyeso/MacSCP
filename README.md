@@ -59,17 +59,6 @@ A native, lightweight, and modern macOS file transfer client inspired by WinSCP.
 
 ---
 
-## Installation
-
-### Pre-built Application
-
-Pre-built Universal binaries (compatible with both **Apple Silicon** and **Intel** Macs) are available in the [`dist/`](dist/) folder:
-
-- **DMG Installer**: [Download `MacSCP.dmg`](dist/MacSCP.dmg) — Open and drag `MacSCP.app` to your `Applications` folder.
-- **ZIP Archive**: [Download `MacSCP.zip`](dist/MacSCP.zip) — Decompress and place `MacSCP.app` in `/Applications`.
-
----
-
 ## Building from Source
 
 ### Requirements
@@ -102,10 +91,6 @@ MacScp/
 ├── MacSCP.xcodeproj/          # Xcode project configuration
 │   └── project.pbxproj
 ├── Package.swift               # Swift Package Manager manifest
-├── dist/                       # Packaged distribution binaries (.app, .dmg, .zip)
-│   ├── MacSCP.app
-│   ├── MacSCP.dmg
-│   └── MacSCP.zip
 ├── MacSCP/
 │   ├── App/
 │   │   └── MacSCPApp.swift     # Application entry point, AppVersion & About panel
