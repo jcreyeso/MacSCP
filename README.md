@@ -125,13 +125,6 @@ MacScp/
 
 ---
 
-## Repository & Contributing
-
-- **GitHub Repository**: [https://github.com/jcreyeso/MacSCP](https://github.com/jcreyeso/MacSCP)
-- Issues, feedback, and pull requests are welcome!
-
----
-
 ## License
 
 This project is licensed under the **GNU General Public License v3.0 (GPLv3)**. See the [LICENSE](LICENSE) file for details.
