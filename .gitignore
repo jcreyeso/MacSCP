@@ -16,3 +16,7 @@ Package.resolved
 *.swp
 *~
 dist/
+
+# Agents & local skills
+.agents/
+agentes/
