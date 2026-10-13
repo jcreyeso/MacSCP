@@ -24,6 +24,7 @@ public struct FileBrowserPanel: View {
     public let onRemoveFavorite: ((String) -> Void)?
     
     // Actions
+    public let onCreateFolder: ((String) -> Void)?
     public let onUpload: ((FileItem) -> Void)?
     public let onDownload: ((FileItem) -> Void)?
     public let onEditInNextpad: ((FileItem) -> Void)?
@@ -31,6 +32,10 @@ public struct FileBrowserPanel: View {
     public let onRemoteCopy: ((FileItem) -> Void)?
     public let onDelete: ((FileItem) -> Void)?
     public let onCopyPath: (String) -> Void
+    
+    @ObservedObject private var l10n = LocalizationService.shared
+    @State private var isShowingNewFolderDialog: Bool = false
+    @State private var newFolderName: String = ""
     
     public init(
         isRemote: Bool,
@@ -51,6 +56,7 @@ public struct FileBrowserPanel: View {
         onGoHome: (() -> Void)? = nil,
         onToggleFavorite: ((String) -> Void)? = nil,
         onRemoveFavorite: ((String) -> Void)? = nil,
+        onCreateFolder: ((String) -> Void)? = nil,
         onUpload: ((FileItem) -> Void)? = nil,
         onDownload: ((FileItem) -> Void)? = nil,
         onEditInNextpad: ((FileItem) -> Void)? = nil,
@@ -77,6 +83,7 @@ public struct FileBrowserPanel: View {
         self.onGoHome = onGoHome
         self.onToggleFavorite = onToggleFavorite
         self.onRemoveFavorite = onRemoveFavorite
+        self.onCreateFolder = onCreateFolder
         self.onUpload = onUpload
         self.onDownload = onDownload
         self.onEditInNextpad = onEditInNextpad
@@ -99,7 +106,11 @@ public struct FileBrowserPanel: View {
                 onRefresh: onRefresh,
                 onGoHome: onGoHome,
                 onToggleFavorite: onToggleFavorite,
-                onRemoveFavorite: onRemoveFavorite
+                onRemoveFavorite: onRemoveFavorite,
+                onCreateFolder: onCreateFolder != nil ? {
+                    newFolderName = ""
+                    isShowingNewFolderDialog = true
+                } : nil
             )
             .background(Color(NSColor.windowBackgroundColor))
             
@@ -114,7 +125,7 @@ public struct FileBrowserPanel: View {
             if isLoading {
                 VStack {
                     Spacer()
-                    ProgressView("Cargando archivos...")
+                    ProgressView(l10n.currentLanguage == .spanish ? "Cargando archivos..." : "Loading files...")
                         .progressViewStyle(.circular)
                     Spacer()
                 }
@@ -125,9 +136,19 @@ public struct FileBrowserPanel: View {
                     Image(systemName: "folder.badge.questionmark")
                         .font(.system(size: 32))
                         .foregroundColor(.secondary)
-                    Text(isRemote && (!isConnected || currentPath.isEmpty) ? "No conectado" : "Directorio vacío")
+                    Text(isRemote && (!isConnected || currentPath.isEmpty) ? l10n[.notConnected] : l10n[.emptyFolder])
                         .foregroundColor(.secondary)
                         .font(.callout)
+                    if onCreateFolder != nil && (!isRemote || isConnected) {
+                        Button(action: {
+                            newFolderName = ""
+                            isShowingNewFolderDialog = true
+                        }) {
+                            Label(l10n[.newFolder], systemImage: "folder.badge.plus")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -150,6 +171,24 @@ public struct FileBrowserPanel: View {
             }
         }
         .background(Color(NSColor.controlBackgroundColor))
+        .alert(l10n[.newFolder], isPresented: $isShowingNewFolderDialog) {
+            TextField(l10n[.folderName], text: $newFolderName)
+            Button(l10n[.create]) {
+                let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    onCreateFolder?(trimmed)
+                }
+                newFolderName = ""
+            }
+            .keyboardShortcut(.defaultAction)
+            Button(l10n[.cancel], role: .cancel) {
+                newFolderName = ""
+            }
+        } message: {
+            Text(isRemote 
+                 ? (l10n.currentLanguage == .spanish ? "Ingresa el nombre para la nueva carpeta en el servidor:" : "Enter name for the new folder on the server:")
+                 : (l10n.currentLanguage == .spanish ? "Ingresa el nombre para la nueva carpeta en tu Mac:" : "Enter name for the new folder on your Mac:"))
+        }
     }
     
     // MARK: - Sorted Items
@@ -191,11 +230,11 @@ public struct FileBrowserPanel: View {
         HStack(spacing: 8) {
             Color.clear.frame(width: 18, height: 1)
             
-            columnHeaderButton(title: "Nombre", column: .name, alignment: .leading)
+            columnHeaderButton(title: l10n[.name], column: .name, alignment: .leading)
             
-            columnHeaderButton(title: "Tamaño", column: .size, width: 75, alignment: .trailing)
+            columnHeaderButton(title: l10n[.size], column: .size, width: 75, alignment: .trailing)
             
-            columnHeaderButton(title: "Fecha", column: .date, width: 105, alignment: .trailing)
+            columnHeaderButton(title: l10n[.modified], column: .date, width: 105, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 5)
@@ -231,7 +270,7 @@ public struct FileBrowserPanel: View {
         }
         .buttonStyle(.plain)
         .frame(width: width)
-        .help("Ordenar por \(title) (\(sortColumn == column ? (sortDirection == .ascending ? "Ascendente" : "Descendente") : "Hacer clic para ordenar"))")
+        .help("\(title) (\(sortColumn == column ? (sortDirection == .ascending ? "↑" : "↓") : ""))")
     }
     
     private func setSort(to column: SortColumn) {
@@ -248,58 +287,93 @@ public struct FileBrowserPanel: View {
     private func buildContextMenu(for item: FileItem) -> some View {
         if item.isParentDirectory {
             Button(action: { onNavigateUp() }) {
-                Label("Subir un nivel", systemImage: "arrow.up")
+                Label(l10n[.goUpOneLevel], systemImage: "arrow.up")
+            }
+            if onCreateFolder != nil {
+                Divider()
+                Button(action: {
+                    newFolderName = ""
+                    isShowingNewFolderDialog = true
+                }) {
+                    Label("\(l10n[.newFolder])...", systemImage: "folder.badge.plus")
+                }
             }
         } else {
             if isRemote {
                 // Remote Context Menu
+                if onCreateFolder != nil {
+                    Button(action: {
+                        newFolderName = ""
+                        isShowingNewFolderDialog = true
+                    }) {
+                        Label("\(l10n[.newFolder])...", systemImage: "folder.badge.plus")
+                    }
+                    Divider()
+                }
+                
                 if !item.isDirectory {
                     Button(action: { onEditInNextpad?(item) }) {
-                        Label("Editar en Nextpad++", systemImage: "pencil.circle")
+                        Label(l10n.currentLanguage == .spanish ? "Editar en Nextpad++" : "Edit in Nextpad++", systemImage: "pencil.circle")
                     }
                 } else {
                     Button(action: { onDoubleClick(item) }) {
-                        Label("Abrir carpeta", systemImage: "folder")
+                        Label(l10n.currentLanguage == .spanish ? "Abrir carpeta" : "Open folder", systemImage: "folder")
                     }
                 }
                 
-                // Descargar a local (funciona para archivo o carpeta completa)
+                // Download to Mac
                 Button(action: { onDownload?(item) }) {
                     Label(
-                        item.isDirectory ? "Descargar carpeta a local" : "Descargar a local",
+                        item.isDirectory 
+                            ? (l10n.currentLanguage == .spanish ? "Descargar carpeta a local" : "Download folder to Mac")
+                            : l10n[.downloadToMac],
                         systemImage: "arrow.down.circle"
                     )
                 }
                 
-                // Requirement 5: Quick copy to another remote location
+                // Server-side copy
                 Button(action: { onRemoteCopy?(item) }) {
-                    Label("Copiar a otra ubicación en servidor...", systemImage: "doc.on.doc")
+                    Label(l10n[.copyToAnotherLocation], systemImage: "doc.on.doc")
                 }
                 
                 Divider()
                 
-                // Eliminar archivo o carpeta remota
+                // Delete
                 if let onDelete = onDelete {
                     Button(role: .destructive, action: { onDelete(item) }) {
                         Label(
-                            item.isDirectory ? "Eliminar carpeta del servidor" : "Eliminar archivo del servidor",
+                            item.isDirectory 
+                                ? (l10n.currentLanguage == .spanish ? "Eliminar carpeta del servidor" : "Delete folder from server")
+                                : (l10n.currentLanguage == .spanish ? "Eliminar archivo del servidor" : "Delete file from server"),
                             systemImage: "trash"
                         )
                     }
                 }
             } else {
                 // Local Context Menu
+                if onCreateFolder != nil {
+                    Button(action: {
+                        newFolderName = ""
+                        isShowingNewFolderDialog = true
+                    }) {
+                        Label("\(l10n[.newFolder])...", systemImage: "folder.badge.plus")
+                    }
+                    Divider()
+                }
+                
                 if item.isDirectory {
                     Button(action: { onDoubleClick(item) }) {
-                        Label("Abrir carpeta", systemImage: "folder")
+                        Label(l10n.currentLanguage == .spanish ? "Abrir carpeta" : "Open folder", systemImage: "folder")
                     }
                 }
                 
-                // Subir a servidor (funciona para archivo o carpeta completa si está conectado)
+                // Upload to server
                 if isConnected {
                     Button(action: { onUpload?(item) }) {
                         Label(
-                            item.isDirectory ? "Subir carpeta a servidor" : "Subir a servidor",
+                            item.isDirectory 
+                                ? (l10n.currentLanguage == .spanish ? "Subir carpeta a servidor" : "Upload folder to server")
+                                : l10n[.uploadToServer],
                             systemImage: "arrow.up.circle"
                         )
                     }
@@ -308,16 +382,18 @@ public struct FileBrowserPanel: View {
                 Button(action: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
                 }) {
-                    Label("Mostrar en Finder", systemImage: "macwindow")
+                    Label(l10n.currentLanguage == .spanish ? "Mostrar en Finder" : "Show in Finder", systemImage: "macwindow")
                 }
                 
                 Divider()
                 
-                // Eliminar archivo o carpeta local
+                // Delete
                 if let onDelete = onDelete {
                     Button(role: .destructive, action: { onDelete(item) }) {
                         Label(
-                            item.isDirectory ? "Eliminar carpeta" : "Eliminar archivo",
+                            item.isDirectory 
+                                ? (l10n.currentLanguage == .spanish ? "Eliminar carpeta" : "Delete folder")
+                                : (l10n.currentLanguage == .spanish ? "Eliminar archivo" : "Delete file"),
                             systemImage: "trash"
                         )
                     }
@@ -327,7 +403,7 @@ public struct FileBrowserPanel: View {
             Divider()
             
             Button(action: { onCopyPath(item.path) }) {
-                Label("Copiar ruta", systemImage: "doc.on.clipboard")
+                Label(l10n[.copyPath], systemImage: "doc.on.clipboard")
             }
         }
     }
@@ -341,8 +417,6 @@ struct FileRowView: View {
     
     var body: some View {
         HStack(spacing: 8) {
-            // Icon according to Requirement 6:
-            // "Inicialmente solo colocar icono de folder e icono de archivo, mostrando extensión del archivo"
             Image(systemName: item.systemIconName)
                 .foregroundColor(item.iconColor)
                 .font(.system(size: 14))
@@ -383,4 +457,3 @@ struct FileRowView: View {
         .padding(.vertical, 2)
     }
 }
-

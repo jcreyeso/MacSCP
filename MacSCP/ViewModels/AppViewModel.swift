@@ -61,10 +61,15 @@ public final class AppViewModel: ObservableObject {
     @Published public var remoteCopySourceItem: FileItem?
     @Published public var remoteCopyDestinationPath: String = ""
     @Published public var isPerformingRemoteCopy: Bool = false
+    @Published public var remoteCopyRecentPaths: [String] = []
     
     // MARK: - Deletion Confirmation
     @Published public var itemToDelete: FileItem?
     @Published public var isShowingDeleteConfirmation: Bool = false
+    
+    private var isSpanish: Bool {
+        LocalizationService.shared.currentLanguage == .spanish
+    }
     
     // MARK: - Notifications / Toasts
     @Published public var activeToast: ToastItem?
@@ -118,6 +123,7 @@ public final class AppViewModel: ObservableObject {
         loadLocalFiles()
         loadFavorites()
         loadSortSettings()
+        loadRemoteCopyRecentPaths()
         setupWatchServiceCallback()
     }
     
@@ -154,14 +160,15 @@ public final class AppViewModel: ObservableObject {
                 self.remotePath = cleanHome
                 self.loadRemoteFavorites()
                 self.loadRemoteSortSettings()
+                self.loadRemoteCopyRecentPaths()
                 self.isConnecting = false
                 self.isShowingConnectionsSheet = false
-                self.showToast("Conectado a \(connection.alias)", type: .success)
+                self.showToast(self.isSpanish ? "Conectado a \(connection.alias)" : "Connected to \(connection.alias)", type: .success)
                 
                 await self.loadRemoteFiles()
             } catch {
                 self.isConnecting = false
-                self.showToast("Error conectando a \(connection.alias): \(error.localizedDescription)", type: .error)
+                self.showToast(self.isSpanish ? "Error conectando a \(connection.alias): \(error.localizedDescription)" : "Error connecting to \(connection.alias): \(error.localizedDescription)", type: .error)
             }
         }
     }
@@ -211,7 +218,7 @@ public final class AppViewModel: ObservableObject {
             self.selectedRemotePath = nil
             self.sessionSudoPassword = nil
             self.isShowingSudoPrompt = false
-            self.showToast("Desconectado", type: .info)
+            self.showToast(self.isSpanish ? "Desconectado" : "Disconnected", type: .info)
         }
     }
     
@@ -222,7 +229,7 @@ public final class AppViewModel: ObservableObject {
         do {
             self.localFiles = try localManager.listDirectory(at: localPath)
         } catch {
-            showToast("Error listando directorio local: \(error.localizedDescription)", type: .error)
+            showToast(isSpanish ? "Error listando directorio local: \(error.localizedDescription)" : "Error listing local directory: \(error.localizedDescription)", type: .error)
             self.localFiles = []
         }
         isLoadingLocal = false
@@ -231,7 +238,7 @@ public final class AppViewModel: ObservableObject {
     public func navigateLocal(to path: String) {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            showToast("La ruta local no puede estar vacía", type: .error)
+            showToast(isSpanish ? "La ruta local no puede estar vacía" : "Local path cannot be empty", type: .error)
             return
         }
         
@@ -244,11 +251,11 @@ public final class AppViewModel: ObservableObject {
         
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: cleanPath, isDirectory: &isDir) else {
-            showToast("La ruta no existe: \(cleanPath)", type: .error)
+            showToast(isSpanish ? "La ruta no existe: \(cleanPath)" : "Path does not exist: \(cleanPath)", type: .error)
             return
         }
         guard isDir.boolValue else {
-            showToast("La ruta no es un directorio: \(cleanPath)", type: .error)
+            showToast(isSpanish ? "La ruta no es un directorio: \(cleanPath)" : "Path is not a directory: \(cleanPath)", type: .error)
             return
         }
         
@@ -259,7 +266,7 @@ public final class AppViewModel: ObservableObject {
             self.localFiles = items
             self.selectedLocalPath = nil
         } catch {
-            showToast("Error al acceder a la ruta: \(error.localizedDescription)", type: .error)
+            showToast(isSpanish ? "Error al acceder a la ruta: \(error.localizedDescription)" : "Error accessing path: \(error.localizedDescription)", type: .error)
         }
         isLoadingLocal = false
     }
@@ -309,7 +316,7 @@ public final class AppViewModel: ObservableObject {
             self.remotePath = currentClean
             self.remoteFiles = items
         } catch {
-            showToast("Error listando archivos remotos: \(error.localizedDescription)", type: .error)
+            showToast(isSpanish ? "Error listando archivos remotos: \(error.localizedDescription)" : "Error listing remote files: \(error.localizedDescription)", type: .error)
         }
         isLoadingRemote = false
     }
@@ -334,13 +341,13 @@ public final class AppViewModel: ObservableObject {
     
     public func navigateRemote(to path: String) {
         guard currentConnection != nil else {
-            showToast("Debes conectarte a un servidor primero", type: .error)
+            showToast(isSpanish ? "Debes conectarte a un servidor primero" : "You must connect to a server first", type: .error)
             return
         }
         
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            showToast("La ruta remota no puede estar vacía", type: .error)
+            showToast(isSpanish ? "La ruta remota no puede estar vacía" : "Remote path cannot be empty", type: .error)
             return
         }
         
@@ -386,7 +393,7 @@ public final class AppViewModel: ObservableObject {
                 self.isLoadingRemote = false
             } catch {
                 self.isLoadingRemote = false
-                self.showToast("Ruta remota no válida: \(error.localizedDescription)", type: .error)
+                self.showToast(self.isSpanish ? "Ruta remota no válida: \(error.localizedDescription)" : "Invalid remote path: \(error.localizedDescription)", type: .error)
             }
         }
     }
@@ -423,7 +430,7 @@ public final class AppViewModel: ObservableObject {
         )
         
         let prefix = withSudo ? " con sudo 🛡️" : ""
-        showToast("Descargando \(item.name) para editar\(prefix)...", type: .info)
+        showToast(isSpanish ? "Descargando \(item.name) para editar\(prefix)..." : "Downloading \(item.name) for editing\(prefix)...", type: .info)
         
         Task { [weak self] in
             guard let self = self else { return }
@@ -455,7 +462,7 @@ public final class AppViewModel: ObservableObject {
                     isElevated: withSudo
                 )
                 
-                self.showToast("Abierto en Nextpad++\(prefix) (se guardará automáticamente al salvar)", type: .success)
+                self.showToast(self.isSpanish ? "Abierto en Nextpad++\(prefix) (se guardará automáticamente al salvar)" : "Opened in Nextpad++\(prefix) (changes will auto-upload on save)", type: .success)
             } catch let sftpError as SFTPError {
                 self.activeTransfer = nil
                 if case .permissionDenied = sftpError, withSudo {
@@ -487,7 +494,7 @@ public final class AppViewModel: ObservableObject {
         
         let fileName = (monitoredFile.remotePath as NSString).lastPathComponent
         let prefix = monitoredFile.isElevated ? " con sudo 🛡️" : ""
-        showToast("Sincronizando cambios de \(fileName)\(prefix) con el servidor...", type: .info)
+        showToast(isSpanish ? "Sincronizando cambios de \(fileName)\(prefix) con el servidor..." : "Syncing changes for \(fileName)\(prefix) with server...", type: .info)
         
         Task { [weak self] in
             guard let self = self else { return }
@@ -500,7 +507,7 @@ public final class AppViewModel: ObservableObject {
                         connection: currentConn,
                         password: self.sessionSudoPassword
                     )
-                    self.showToast("✓ \(fileName) guardado con sudo en el servidor 🛡️", type: .success)
+                    self.showToast(self.isSpanish ? "✓ \(fileName) guardado con sudo en el servidor 🛡️" : "✓ \(fileName) saved with sudo on server 🛡️", type: .success)
                 } else {
                     try await self.sftpClient.uploadFile(
                         localURL: monitoredFile.localURL,
@@ -511,7 +518,7 @@ public final class AppViewModel: ObservableObject {
                         }
                     }
                     self.activeTransfer = nil
-                    self.showToast("✓ \(fileName) actualizado en el servidor", type: .success)
+                    self.showToast(self.isSpanish ? "✓ \(fileName) actualizado en el servidor" : "✓ \(fileName) updated on server", type: .success)
                 }
                 
                 // Refresh remote directory if currently viewing that folder
@@ -543,12 +550,12 @@ public final class AppViewModel: ObservableObject {
     /// Quick upload selected local item to current remote folder.
     public func uploadSelectedLocalToRemote() {
         guard currentConnection != nil else {
-            showToast("Debes conectarte a un servidor primero", type: .error)
+            showToast(isSpanish ? "Debes conectarte a un servidor primero" : "You must connect to a server first", type: .error)
             return
         }
         guard let localPathSelected = selectedLocalPath,
               let item = localFiles.first(where: { $0.path == localPathSelected && !$0.isParentDirectory }) else {
-            showToast("Selecciona un archivo local para subir", type: .info)
+            showToast(isSpanish ? "Selecciona un archivo local para subir" : "Select a local file to upload", type: .info)
             return
         }
         
@@ -562,7 +569,7 @@ public final class AppViewModel: ObservableObject {
         let isDir = item.isDirectory
         let label = isDir ? "carpeta" : "archivo"
         
-        showToast("Subiendo \(label) \(item.name)...", type: .info)
+        showToast(isSpanish ? "Subiendo \(label) \(item.name)..." : "Uploading \(label) \(item.name)...", type: .info)
         
         // Reset transfer state
         transferState.reset()
@@ -595,12 +602,12 @@ public final class AppViewModel: ObservableObject {
                 
                 self.activeTransfer = nil
                 self.currentTransferTask = nil
-                self.showToast("✓ \(item.name) subido correctamente", type: .success)
+                self.showToast(self.isSpanish ? "✓ \(item.name) subido correctamente" : "✓ \(item.name) uploaded successfully", type: .success)
                 await self.loadRemoteFiles()
             } catch is CancellationError {
                 self.activeTransfer = nil
                 self.currentTransferTask = nil
-                self.showToast("Carga cancelada", type: .info)
+                self.showToast(self.isSpanish ? "Carga cancelada" : "Upload cancelled", type: .info)
             } catch {
                 self.activeTransfer = nil
                 self.currentTransferTask = nil
@@ -615,7 +622,7 @@ public final class AppViewModel: ObservableObject {
     public func downloadSelectedRemoteToLocal() {
         guard let remotePathSelected = selectedRemotePath,
               let item = remoteFiles.first(where: { $0.path == remotePathSelected && !$0.isParentDirectory }) else {
-            showToast("Selecciona un elemento remoto para descargar", type: .info)
+            showToast(isSpanish ? "Selecciona un elemento remoto para descargar" : "Select a remote item to download", type: .info)
             return
         }
         
@@ -628,7 +635,7 @@ public final class AppViewModel: ObservableObject {
         let isDir = item.isDirectory
         let label = isDir ? "carpeta" : "archivo"
         
-        showToast("Descargando \(label) \(item.name)...", type: .info)
+        showToast(isSpanish ? "Descargando \(label) \(item.name)..." : "Downloading \(label) \(item.name)...", type: .info)
         
         // Reset transfer state
         transferState.reset()
@@ -661,12 +668,12 @@ public final class AppViewModel: ObservableObject {
                 
                 self.activeTransfer = nil
                 self.currentTransferTask = nil
-                self.showToast("✓ \(item.name) descargado correctamente", type: .success)
+                self.showToast(self.isSpanish ? "✓ \(item.name) descargado correctamente" : "✓ \(item.name) downloaded successfully", type: .success)
                 self.loadLocalFiles()
             } catch is CancellationError {
                 self.activeTransfer = nil
                 self.currentTransferTask = nil
-                self.showToast("Descarga cancelada", type: .info)
+                self.showToast(self.isSpanish ? "Descarga cancelada" : "Download cancelled", type: .info)
             } catch {
                 self.activeTransfer = nil
                 self.currentTransferTask = nil
@@ -700,7 +707,73 @@ public final class AppViewModel: ObservableObject {
         currentTransferTask?.cancel()
         currentTransferTask = nil
         activeTransfer = nil
-        showToast("Transferencia cancelada", type: .info)
+        showToast(isSpanish ? "Transferencia cancelada" : "Transfer cancelled", type: .info)
+    }
+    
+    // MARK: - Folder Creation Operations (Local & Remote)
+    
+    public func createLocalFolder(named name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showToast(isSpanish ? "El nombre de la carpeta no puede estar vacío" : "Folder name cannot be empty", type: .error)
+            return
+        }
+        guard !trimmed.contains("/") && !trimmed.contains(":") else {
+            showToast(isSpanish ? "El nombre de la carpeta no puede contener '/' o ':'" : "Folder name cannot contain '/' or ':'", type: .error)
+            return
+        }
+        guard trimmed != "." && trimmed != ".." else {
+            showToast(isSpanish ? "Nombre de carpeta no válido" : "Invalid folder name", type: .error)
+            return
+        }
+        
+        do {
+            try localManager.createFolder(named: trimmed, in: localPath)
+            showToast(isSpanish ? "✓ Carpeta '\(trimmed)' creada" : "✓ Folder '\(trimmed)' created", type: .success)
+            loadLocalFiles()
+            selectedLocalPath = (localPath as NSString).appendingPathComponent(trimmed)
+        } catch {
+            showToast("Error al crear carpeta local: \(error.localizedDescription)", type: .error)
+        }
+    }
+    
+    public func createRemoteFolder(named name: String) {
+        guard currentConnection != nil else {
+            showToast(isSpanish ? "Debes conectarte a un servidor primero" : "You must connect to a server first", type: .error)
+            return
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showToast(isSpanish ? "El nombre de la carpeta no puede estar vacío" : "Folder name cannot be empty", type: .error)
+            return
+        }
+        guard !trimmed.contains("/") else {
+            showToast(isSpanish ? "El nombre de la carpeta no puede contener '/'" : "Folder name cannot contain '/'", type: .error)
+            return
+        }
+        guard trimmed != "." && trimmed != ".." else {
+            showToast(isSpanish ? "Nombre de carpeta no válido" : "Invalid folder name", type: .error)
+            return
+        }
+        
+        let targetPath = remotePath == "/" ? "/\(trimmed)" : "\(remotePath)/\(trimmed)"
+        
+        Task {
+            do {
+                try await sftpClient.createDirectory(path: targetPath)
+                self.showToast(self.isSpanish ? "✓ Carpeta '\(trimmed)' creada en el servidor" : "✓ Folder '\(trimmed)' created on server", type: .success)
+                await self.loadRemoteFiles()
+                self.selectedRemotePath = targetPath
+            } catch let sftpError as SFTPError {
+                if case .sftpStatusError(let code, _) = sftpError, code == 3 {
+                    self.showToast(self.isSpanish ? "Permiso denegado. Considera elevar la sesión a Sudo." : "Permission denied. Consider elevating session to Sudo.", type: .error)
+                } else {
+                    self.showToast("Error al crear carpeta en el servidor: \(sftpError.localizedDescription)", type: .error)
+                }
+            } catch {
+                self.showToast("Error al crear carpeta en el servidor: \(error.localizedDescription)", type: .error)
+            }
+        }
     }
     
     // MARK: - Delete Operations (Local & Remote)
@@ -728,7 +801,7 @@ public final class AppViewModel: ObservableObject {
         let label = item.isDirectory ? "carpeta" : "archivo"
         do {
             try localManager.deleteItem(at: item.path)
-            showToast("✓ \(item.name) eliminado", type: .info)
+            showToast(isSpanish ? "✓ \(item.name) eliminado" : "✓ \(item.name) deleted", type: .info)
             loadLocalFiles()
         } catch {
             showToast("Error al eliminar \(label) local: \(error.localizedDescription)", type: .error)
@@ -738,12 +811,12 @@ public final class AppViewModel: ObservableObject {
     public func deleteRemoteItem(_ item: FileItem) {
         guard currentConnection != nil, !item.isParentDirectory else { return }
         let label = item.isDirectory ? "carpeta" : "archivo"
-        showToast("Eliminando \(label) \(item.name)...", type: .info)
+        showToast(isSpanish ? "Eliminando \(label) \(item.name)..." : "Deleting \(label) \(item.name)...", type: .info)
         
         Task {
             do {
                 try await sftpClient.deleteItem(path: item.path, isDirectory: item.isDirectory)
-                self.showToast("✓ \(item.name) eliminado del servidor", type: .info)
+                self.showToast(self.isSpanish ? "✓ \(item.name) eliminado del servidor" : "✓ \(item.name) deleted from server", type: .info)
                 await self.loadRemoteFiles()
             } catch {
                 self.showToast("Error al eliminar \(label) remoto: \(error.localizedDescription)", type: .error)
@@ -752,6 +825,47 @@ public final class AppViewModel: ObservableObject {
     }
     
     // MARK: - Remote-to-Remote Quick Copy (Requirement 5)
+    
+    private var remoteCopyRecentPathsKey: String {
+        if let conn = currentConnection {
+            return "MacSCP_RemoteCopyRecentPaths_\(conn.alias)"
+        }
+        return "MacSCP_RemoteCopyRecentPaths_Default"
+    }
+    
+    public func loadRemoteCopyRecentPaths() {
+        if let saved = UserDefaults.standard.stringArray(forKey: remoteCopyRecentPathsKey), !saved.isEmpty {
+            self.remoteCopyRecentPaths = saved
+        } else {
+            self.remoteCopyRecentPaths = UserDefaults.standard.stringArray(forKey: "MacSCP_RemoteCopyRecentPaths_Default") ?? []
+        }
+    }
+    
+    public func saveRemoteCopyRecentPath(_ path: String) {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        var list = remoteCopyRecentPaths.filter { $0 != trimmed }
+        list.insert(trimmed, at: 0)
+        if list.count > 10 {
+            list = Array(list.prefix(10))
+        }
+        self.remoteCopyRecentPaths = list
+        UserDefaults.standard.set(list, forKey: remoteCopyRecentPathsKey)
+        UserDefaults.standard.set(list, forKey: "MacSCP_RemoteCopyRecentPaths_Default")
+    }
+    
+    public func removeRemoteCopyRecentPath(_ path: String) {
+        self.remoteCopyRecentPaths.removeAll { $0 == path }
+        UserDefaults.standard.set(self.remoteCopyRecentPaths, forKey: remoteCopyRecentPathsKey)
+        UserDefaults.standard.set(self.remoteCopyRecentPaths, forKey: "MacSCP_RemoteCopyRecentPaths_Default")
+    }
+    
+    public func clearRemoteCopyRecentPaths() {
+        self.remoteCopyRecentPaths.removeAll()
+        UserDefaults.standard.removeObject(forKey: remoteCopyRecentPathsKey)
+        UserDefaults.standard.removeObject(forKey: "MacSCP_RemoteCopyRecentPaths_Default")
+    }
     
     public func promptRemoteCopy(for item: FileItem) {
         self.remoteCopySourceItem = item
@@ -767,17 +881,20 @@ public final class AppViewModel: ObservableObject {
     
     public func executeRemoteCopy() {
         guard let source = remoteCopySourceItem, !remoteCopyDestinationPath.isEmpty else { return }
-        let dest = remoteCopyDestinationPath
+        let dest = remoteCopyDestinationPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !dest.isEmpty else { return }
+        
+        saveRemoteCopyRecentPath(dest)
         
         isPerformingRemoteCopy = true
-        showToast("Copiando en servidor...", type: .info)
+        showToast(isSpanish ? "Copiando en servidor..." : "Copying on server...", type: .info)
         
         Task {
             do {
                 try await sftpClient.remoteCopy(sourcePath: source.path, destPath: dest)
                 self.isPerformingRemoteCopy = false
                 self.isShowingRemoteCopySheet = false
-                self.showToast("✓ Copiado en servidor a \(dest)", type: .success)
+                self.showToast(self.isSpanish ? "✓ Copiado en servidor a \(dest)" : "✓ Copied on server to \(dest)", type: .success)
                 await self.loadRemoteFiles()
             } catch {
                 self.isPerformingRemoteCopy = false
@@ -792,7 +909,7 @@ public final class AppViewModel: ObservableObject {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
-        showToast("Ruta copiada al portapapeles", type: .info)
+        showToast(isSpanish ? "Ruta copiada al portapapeles" : "Path copied to clipboard", type: .info)
     }
     
     // MARK: - Toast Notification Helper

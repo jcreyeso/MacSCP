@@ -25,6 +25,8 @@
 		B10000000000000000000010 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* MainView.swift */; };
 		B10000000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* Assets.xcassets */; };
 		B10000000000000000000014 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000014 /* AppIcon.icns */; };
+		B10000000000000000000015 /* LocalizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000015 /* LocalizationService.swift */; };
+		B10000000000000000000016 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000016 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +51,8 @@
 		F10000000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F10000000000000000000013 /* MacSCP.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MacSCP.entitlements; sourceTree = "<group>"; };
 		F10000000000000000000014 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		F10000000000000000000015 /* LocalizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationService.swift; sourceTree = "<group>"; };
+		F10000000000000000000016 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +112,7 @@
 				F10000000000000000000006 /* SFTPClient.swift */,
 				F10000000000000000000007 /* LocalFileManager.swift */,
 				F10000000000000000000008 /* FileWatchService.swift */,
+				F10000000000000000000015 /* LocalizationService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -124,6 +129,7 @@
 			isa = PBXGroup;
 			children = (
 				F10000000000000000000010 /* MainView.swift */,
+				F10000000000000000000016 /* SettingsView.swift */,
 				F1000000000000000000000A /* PathHeaderView.swift */,
 				F1000000000000000000000B /* FileBrowserPanel.swift */,
 				F1000000000000000000000C /* ConnectionsSheet.swift */,
@@ -226,6 +232,8 @@
 				B1000000000000000000000E /* TransferProgressView.swift in Sources */,
 				B1000000000000000000000F /* ToastBannerView.swift in Sources */,
 				B10000000000000000000010 /* MainView.swift in Sources */,
+				B10000000000000000000015 /* LocalizationService.swift in Sources */,
+				B10000000000000000000016 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

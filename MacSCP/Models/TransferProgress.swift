@@ -10,6 +10,15 @@ public enum TransferDirection: String, Codable {
         case .download: return "arrow.down.circle.fill"
         }
     }
+    
+    public var localizedDisplayName: String {
+        switch self {
+        case .upload:
+            return LocalizationService.shared[.uploading]
+        case .download:
+            return LocalizationService.shared[.downloading]
+        }
+    }
 }
 
 /// Tracks real-time transfer progress, rate, and completion.
@@ -60,16 +69,18 @@ public struct TransferProgress: Identifiable {
     
     /// Transfer rate formatted string (e.g. "2.4 MB/s" or "Pausado").
     public var formattedSpeed: String {
-        if isPaused { return "Pausado" }
+        let isSpanish = LocalizationService.shared.currentLanguage == .spanish
+        if isPaused { return isSpanish ? "Pausado" : "Paused" }
         guard currentSpeedBytesPerSec > 0 else { return "0 KB/s" }
         return "\(ByteCountFormatter.string(fromByteCount: Int64(currentSpeedBytesPerSec), countStyle: .file))/s"
     }
     
     /// Detailed summary e.g. "14.2 MB / 30.0 MB (47.3%) • 3.1 MB/s".
     public var detailedSummary: String {
+        let isSpanish = LocalizationService.shared.currentLanguage == .spanish
         let transferredStr = ByteCountFormatter.string(fromByteCount: bytesTransferred, countStyle: .file)
         let totalStr = ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
-        let speedStr = isPaused ? "Pausado" : formattedSpeed
+        let speedStr = isPaused ? (isSpanish ? "Pausado" : "Paused") : formattedSpeed
         return "\(transferredStr) / \(totalStr) (\(formattedPercentage)) • \(speedStr)"
     }
 }
@@ -107,7 +118,6 @@ public final class TransferState: @unchecked Sendable {
             _isCancelled = newValue
         }
     }
-    
     public func pause() { isPaused = true }
     public func resume() { isPaused = false }
     public func cancel() { isCancelled = true }
@@ -118,4 +128,3 @@ public final class TransferState: @unchecked Sendable {
         lock.unlock()
     }
 }
-

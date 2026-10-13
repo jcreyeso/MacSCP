@@ -1,52 +1,55 @@
 import SwiftUI
 import AppKit
 
-/// Main window view with dual-panel layout, transfer buttons, and toolbar.
 public struct MainView: View {
     @StateObject private var viewModel = AppViewModel()
-    @State private var splitRatio: CGFloat = 0.5
-    @State private var dragStartRatio: CGFloat = 0.5
-    @State private var isHoveringSplitter: Bool = false
+    @ObservedObject private var l10n = LocalizationService.shared
+    
+    // Split view ratio state (Requirement 2)
+    @State private var splitRatio: CGFloat = 0.50
     @State private var isDraggingSplitter: Bool = false
+    @State private var isHoveringSplitter: Bool = false
+    @State private var dragStartRatio: CGFloat = 0.50
+    @State private var isShowingSettingsSheet: Bool = false
     
     public init() {}
     
     public var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             VStack(spacing: 0) {
-                // Top Application Toolbar
+                // Top Toolbar (Connection status, SSH Manager, Sudo elevation, About & Settings)
                 topToolbar
                 
                 Divider()
                 
-                // Active Editing Banner (Nextpad++ sync status)
+                // Active file monitoring indicator banner
                 if !viewModel.fileWatchService.monitoredFiles.isEmpty {
                     activeEditingBanner
+                    Divider()
                 }
                 
-                // Dual Navigation Panels (Requirement 2)
+                // Main Dual-Panel Split View (Requirement 2 & 4)
                 GeometryReader { geometry in
+                    let availableWidth = geometry.size.width
                     let centerBarWidth: CGFloat = 8
-                    let availableWidth = max(0, geometry.size.width - centerBarWidth)
-                    let minPanelWidth: CGFloat = 260
+                    let minRatio: CGFloat = max(240 / availableWidth, 0.20)
+                    let maxRatio: CGFloat = min(1.0 - (240 / availableWidth), 0.80)
+                    let clampedRatio = min(max(splitRatio, minRatio), maxRatio)
                     
-                    let minRatio: CGFloat = availableWidth > 0 ? min(0.45, minPanelWidth / availableWidth) : 0.5
-                    let maxRatio: CGFloat = availableWidth > 0 ? max(0.55, 1.0 - (minPanelWidth / availableWidth)) : 0.5
-                    let clampedRatio = minRatio <= maxRatio ? min(max(splitRatio, minRatio), maxRatio) : 0.5
-                    
-                    let leftWidth = availableWidth * clampedRatio
-                    let rightWidth = max(0, availableWidth - leftWidth)
+                    let contentWidth = max(availableWidth - centerBarWidth, 0)
+                    let leftWidth = max(contentWidth * clampedRatio, 150)
+                    let rightWidth = max(contentWidth * (1.0 - clampedRatio), 150)
                     
                     HStack(spacing: 0) {
                         // Left Panel: Local Files
                         FileBrowserPanel(
                             isRemote: false,
-                            title: "Archivos Locales (Mac)",
+                            title: l10n[.localPanel],
                             currentPath: $viewModel.localPath,
                             items: viewModel.localFiles,
                             isLoading: viewModel.isLoadingLocal,
                             selectedPath: $viewModel.selectedLocalPath,
-                            isConnected: viewModel.currentConnection != nil,
+                            isConnected: true,
                             favorites: viewModel.localFavorites,
                             sortColumn: $viewModel.localSortColumn,
                             sortDirection: $viewModel.localSortDirection,
@@ -74,6 +77,9 @@ public struct MainView: View {
                             onRemoveFavorite: { path in
                                 viewModel.removeLocalFavorite(path)
                             },
+                            onCreateFolder: { name in
+                                viewModel.createLocalFolder(named: name)
+                            },
                             onUpload: { item in
                                 viewModel.uploadLocalItem(item)
                             },
@@ -87,7 +93,7 @@ public struct MainView: View {
                         .frame(width: leftWidth)
                         .frame(maxHeight: .infinity)
                         
-                        // Center Transfer Controls Bar & Splitter (Requirement 4)
+                        // Center Transfer Controls Bar & Splitter
                         centerSplitterBar(
                             availableWidth: availableWidth,
                             minRatio: minRatio,
@@ -99,7 +105,7 @@ public struct MainView: View {
                         // Right Panel: Remote Files
                         FileBrowserPanel(
                             isRemote: true,
-                            title: viewModel.currentConnection != nil ? "Archivos Remotos (\(viewModel.currentConnection!.alias))" : "Archivos Remotos",
+                            title: viewModel.currentConnection != nil ? "\(l10n[.remotePanel]) (\(viewModel.currentConnection!.alias))" : l10n[.remotePanel],
                             currentPath: $viewModel.remotePath,
                             items: viewModel.remoteFiles,
                             isLoading: viewModel.isLoadingRemote,
@@ -132,6 +138,9 @@ public struct MainView: View {
                             onRemoveFavorite: { path in
                                 viewModel.removeRemoteFavorite(path)
                             },
+                            onCreateFolder: { name in
+                                viewModel.createRemoteFolder(named: name)
+                            },
                             onDownload: { item in
                                 viewModel.downloadRemoteItem(item)
                             },
@@ -157,7 +166,7 @@ public struct MainView: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 
-                // Bottom Transfer Progress Bar (Requirement 8)
+                // Bottom Transfer Progress Bar
                 if let transfer = viewModel.activeTransfer {
                     TransferProgressView(
                         progress: transfer,
@@ -185,22 +194,27 @@ public struct MainView: View {
         .sheet(isPresented: $viewModel.isShowingRemoteCopySheet) {
             RemoteCopySheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $isShowingSettingsSheet) {
+            SettingsView()
+        }
         .sheet(isPresented: $viewModel.isShowingSudoPrompt) {
             sudoPasswordPromptSheet
         }
         .confirmationDialog(
-            "¿Eliminar \(viewModel.itemToDelete?.isDirectory == true ? "la carpeta" : "el archivo") \"\(viewModel.itemToDelete?.name ?? "")\"?",
+            "\(l10n[.delete]) \(viewModel.itemToDelete?.isDirectory == true ? (l10n.currentLanguage == .spanish ? "la carpeta" : "folder") : (l10n.currentLanguage == .spanish ? "el archivo" : "file")) \"\(viewModel.itemToDelete?.name ?? "")\"?",
             isPresented: $viewModel.isShowingDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Eliminar", role: .destructive) {
+            Button(l10n[.delete], role: .destructive) {
                 viewModel.executeDelete()
             }
-            Button("Cancelar", role: .cancel) {
+            Button(l10n[.cancel], role: .cancel) {
                 viewModel.itemToDelete = nil
             }
         } message: {
-            Text(viewModel.itemToDelete?.isRemote == true ? "Esta acción eliminará el elemento del servidor remoto de forma permanente." : "Esta acción eliminará el elemento de tu Mac de forma permanente.")
+            Text(viewModel.itemToDelete?.isRemote == true 
+                 ? (l10n.currentLanguage == .spanish ? "Esta acción eliminará el elemento del servidor remoto de forma permanente." : "This action will permanently delete the item from the remote server.")
+                 : (l10n.currentLanguage == .spanish ? "Esta acción eliminará el elemento de tu Mac de forma permanente." : "This action will permanently delete the item from your Mac."))
         }
         .onAppear {
             if viewModel.connections.isEmpty {
@@ -217,8 +231,15 @@ public struct MainView: View {
                 Image(systemName: "externaldrive.connected.to.line.below")
                     .foregroundColor(.accentColor)
                     .font(.system(size: 16, weight: .bold))
-                Text("MacSCP")
+                Text(l10n[.appName])
                     .font(.system(size: 15, weight: .bold))
+                Text("v\(AppVersion.marketingVersion)")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1.5)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(4)
             }
             
             Spacer()
@@ -229,7 +250,7 @@ public struct MainView: View {
                     Circle()
                         .fill(conn.useSudoSFTP ? Color.orange : Color.green)
                         .frame(width: 8, height: 8)
-                    Text("Conectado a:")
+                    Text(l10n[.connectedTo])
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text(conn.alias)
@@ -243,7 +264,7 @@ public struct MainView: View {
                         HStack(spacing: 3) {
                             Image(systemName: "lock.shield.fill")
                                 .font(.system(size: 9))
-                            Text("SUDO ROOT")
+                            Text(l10n[.sudoRoot])
                                 .font(.system(size: 9, weight: .bold))
                         }
                         .padding(.horizontal, 5)
@@ -262,16 +283,16 @@ public struct MainView: View {
                     Button(action: {
                         viewModel.connectWithSudo(to: conn)
                     }) {
-                        Label("Elevar a Sudo", systemImage: "lock.shield")
+                        Label(l10n.currentLanguage == .spanish ? "Elevar a Sudo" : "Elevate to Sudo", systemImage: "lock.shield")
                     }
                     .buttonStyle(.bordered)
-                    .help("Reiniciar sesión SFTP con privilegios de superusuario (root)")
+                    .help(l10n.currentLanguage == .spanish ? "Reiniciar sesión SFTP con privilegios de superusuario (root)" : "Restart SFTP session with superuser (root) privileges")
                 }
                 
                 Button(action: {
                     viewModel.disconnect()
                 }) {
-                    Label("Desconectar", systemImage: "xmark.circle")
+                    Label(l10n[.disconnect], systemImage: "xmark.circle")
                 }
                 .buttonStyle(.bordered)
             } else {
@@ -279,7 +300,7 @@ public struct MainView: View {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 8, height: 8)
-                    Text("Desconectado")
+                    Text(l10n[.notConnected])
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -293,17 +314,36 @@ public struct MainView: View {
             Button(action: {
                 viewModel.isShowingConnectionsSheet = true
             }) {
-                Label("Conexiones SSH", systemImage: "server.rack")
+                Label(l10n[.sshConnections], systemImage: "server.rack")
             }
             .buttonStyle(.borderedProminent)
-            .help("Seleccionar conexión SSH desde ~/.ssh/config")
+            .help(l10n[.selectSSHConnectionHelp])
+            
+            // Settings button
+            Button(action: {
+                isShowingSettingsSheet = true
+            }) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.bordered)
+            .help(l10n[.settings])
+            
+            // About button
+            Button(action: {
+                AppVersion.showAboutPanel()
+            }) {
+                Image(systemName: "info.circle")
+            }
+            .buttonStyle(.bordered)
+            .help("\(l10n[.aboutMacSCP]) (v\(AppVersion.marketingVersion))")
+            
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(Color(NSColor.windowBackgroundColor))
     }
     
-    // MARK: - Center Splitter Bar (Requirement 2: redimensionamiento de paneles con mouse)
+    // MARK: - Center Splitter Bar
     private func centerSplitterBar(availableWidth: CGFloat, minRatio: CGFloat, maxRatio: CGFloat) -> some View {
         ZStack {
             Rectangle()
@@ -334,7 +374,7 @@ public struct MainView: View {
                 dragStartRatio = 0.5
             }
         }
-        .help("Arrastrar para cambiar proporción de paneles (Doble clic para centrar 50/50)")
+        .help(l10n.currentLanguage == .spanish ? "Arrastrar para cambiar proporción de paneles (Doble clic para centrar 50/50)" : "Drag to resize panels (Double-click to center 50/50)")
     }
     
     // MARK: - Splitter Drag Gesture
@@ -368,7 +408,7 @@ public struct MainView: View {
             Image(systemName: "pencil.and.outline")
                 .foregroundColor(.orange)
             
-            Text("Editando en Nextpad++:")
+            Text(l10n.currentLanguage == .spanish ? "Editando en Nextpad++:" : "Editing in Nextpad++:")
                 .font(.caption)
                 .fontWeight(.bold)
             
@@ -390,7 +430,7 @@ public struct MainView: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("Quitar aviso y finalizar monitoreo de este archivo")
+                    .help(l10n.currentLanguage == .spanish ? "Quitar aviso y finalizar monitoreo de este archivo" : "Dismiss notice and stop monitoring this file")
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
@@ -398,7 +438,7 @@ public struct MainView: View {
                 .cornerRadius(4)
             }
             
-            Text("(Cualquier cambio guardado se cargará automáticamente al servidor)")
+            Text(l10n.currentLanguage == .spanish ? "(Cualquier cambio guardado se cargará automáticamente al servidor)" : "(Any saved changes will be automatically uploaded to the server)")
                 .font(.caption2)
                 .foregroundColor(.secondary)
             
@@ -427,7 +467,7 @@ public struct MainView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
-            SecureField("Contraseña de sudo en el servidor:", text: $viewModel.sudoPromptPasswordInput)
+            SecureField(l10n.currentLanguage == .spanish ? "Contraseña de sudo en el servidor:" : "Sudo password on server:", text: $viewModel.sudoPromptPasswordInput)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit {
                     if !viewModel.sudoPromptPasswordInput.isEmpty {
@@ -436,14 +476,14 @@ public struct MainView: View {
                 }
             
             HStack {
-                Button("Cancelar") {
+                Button(l10n[.cancel]) {
                     viewModel.cancelSudoPassword()
                 }
                 .keyboardShortcut(.cancelAction)
                 
                 Spacer()
                 
-                Button("Aceptar") {
+                Button(l10n.currentLanguage == .spanish ? "Aceptar" : "OK") {
                     viewModel.submitSudoPassword()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -455,4 +495,3 @@ public struct MainView: View {
         .frame(width: 440)
     }
 }
-

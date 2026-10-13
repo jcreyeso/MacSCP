@@ -6,6 +6,7 @@ public struct TransferProgressView: View {
     public let onPause: (() -> Void)?
     public let onResume: (() -> Void)?
     public let onCancel: (() -> Void)?
+    @ObservedObject private var l10n = LocalizationService.shared
     
     public init(
         progress: TransferProgress,
@@ -29,7 +30,7 @@ public struct TransferProgressView: View {
             // File Name & Direction
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(progress.isPaused ? "Pausado" : progress.direction.rawValue)
+                    Text(progress.isPaused ? (l10n.currentLanguage == .spanish ? "Pausado" : "Paused") : progress.direction.localizedDisplayName)
                         .font(.caption)
                         .fontWeight(.bold)
                         .foregroundColor(progress.isPaused ? .orange : .secondary)
@@ -79,7 +80,9 @@ public struct TransferProgressView: View {
                         .foregroundColor(progress.isPaused ? .green : .secondary)
                 }
                 .buttonStyle(.plain)
-                .help(progress.isPaused ? "Reanudar transferencia" : "Pausar transferencia")
+                .help(progress.isPaused 
+                      ? (l10n.currentLanguage == .spanish ? "Reanudar transferencia" : "Resume transfer") 
+                      : (l10n.currentLanguage == .spanish ? "Pausar transferencia" : "Pause transfer"))
                 
                 // Cancel Button
                 Button(action: {
@@ -90,7 +93,7 @@ public struct TransferProgressView: View {
                         .foregroundColor(.red.opacity(0.85))
                 }
                 .buttonStyle(.plain)
-                .help("Cancelar y abortar transferencia")
+                .help(l10n.currentLanguage == .spanish ? "Cancelar y abortar transferencia" : "Cancel and abort transfer")
             }
             .padding(.leading, 4)
         }
@@ -105,4 +108,3 @@ public struct TransferProgressView: View {
         )
     }
 }
-

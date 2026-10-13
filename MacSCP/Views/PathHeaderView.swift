@@ -13,7 +13,9 @@ public struct PathHeaderView: View {
     public let onGoHome: (() -> Void)?
     public let onToggleFavorite: ((String) -> Void)?
     public let onRemoveFavorite: ((String) -> Void)?
+    public let onCreateFolder: (() -> Void)?
     
+    @ObservedObject private var l10n = LocalizationService.shared
     @State private var inputPath: String = ""
     @FocusState private var isFieldFocused: Bool
     
@@ -27,7 +29,8 @@ public struct PathHeaderView: View {
         onRefresh: @escaping () -> Void,
         onGoHome: (() -> Void)? = nil,
         onToggleFavorite: ((String) -> Void)? = nil,
-        onRemoveFavorite: ((String) -> Void)? = nil
+        onRemoveFavorite: ((String) -> Void)? = nil,
+        onCreateFolder: (() -> Void)? = nil
     ) {
         self.title = title
         self._currentPath = currentPath
@@ -39,6 +42,7 @@ public struct PathHeaderView: View {
         self.onGoHome = onGoHome
         self.onToggleFavorite = onToggleFavorite
         self.onRemoveFavorite = onRemoveFavorite
+        self.onCreateFolder = onCreateFolder
     }
     
     public var body: some View {
@@ -58,7 +62,7 @@ public struct PathHeaderView: View {
                             .font(.system(size: 11))
                     }
                     .buttonStyle(.borderless)
-                    .help("Ir a la carpeta inicial")
+                    .help(l10n.currentLanguage == .spanish ? "Ir a la carpeta inicial" : "Go to home folder")
                 }
                 
                 // Navigate Up (..)
@@ -68,7 +72,7 @@ public struct PathHeaderView: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(!showPathInput)
-                .help("Subir un nivel (..)")
+                .help(l10n[.goUpOneLevel])
                 
                 // Refresh
                 Button(action: onRefresh) {
@@ -77,7 +81,18 @@ public struct PathHeaderView: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(!showPathInput)
-                .help("Actualizar lista de archivos")
+                .help(l10n[.reloadFileList])
+                
+                // New Folder
+                if let onCreateFolder = onCreateFolder {
+                    Button(action: onCreateFolder) {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(!showPathInput)
+                    .help(l10n[.newFolder])
+                }
             }
             .padding(.horizontal, 8)
             .padding(.top, 4)
@@ -89,7 +104,7 @@ public struct PathHeaderView: View {
                         .foregroundColor(isFieldFocused ? .accentColor : .secondary)
                         .font(.system(size: 11))
                     
-                    TextField("Ingresar ruta (ej. /var/log, ~/Documentos)...", text: $inputPath)
+                    TextField(l10n.currentLanguage == .spanish ? "Ingresar ruta (ej. /var/log, ~/Documentos)..." : "Enter path (e.g. /var/log, ~/Documents)...", text: $inputPath)
                         .textFieldStyle(.plain)
                         .font(.system(size: 12, design: .monospaced))
                         .focused($isFieldFocused)
@@ -112,7 +127,7 @@ public struct PathHeaderView: View {
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.borderless)
-                        .help("Restablecer ruta actual (Esc)")
+                        .help(l10n.currentLanguage == .spanish ? "Restablecer ruta actual (Esc)" : "Revert path (Esc)")
                         
                         // Go button
                         Button(action: submitPath) {
@@ -121,10 +136,10 @@ public struct PathHeaderView: View {
                                 .foregroundColor(.accentColor)
                         }
                         .buttonStyle(.borderless)
-                        .help("Ir a la ruta (Enter)")
+                        .help(l10n[.go])
                     }
                     
-                    // Star toggle button (Requirement: marcar como favorito)
+                    // Star toggle button
                     if let onToggleFavorite = onToggleFavorite {
                         let isFav = favorites.contains(currentPath)
                         Button(action: {
@@ -135,10 +150,10 @@ public struct PathHeaderView: View {
                                 .foregroundColor(isFav ? .yellow : .secondary)
                         }
                         .buttonStyle(.borderless)
-                        .help(isFav ? "Quitar de favoritos" : "Marcar ruta actual como favorita")
+                        .help(isFav ? l10n[.removeFromFavorites] : l10n[.addCurrentToFavorites])
                     }
                     
-                    // Favorites Menu (Requirement: lista de favoritos para navegar rápidamente)
+                    // Favorites Menu
                     favoritesMenu
                     
                     // Quick copy button
@@ -148,7 +163,7 @@ public struct PathHeaderView: View {
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.borderless)
-                    .help("Copiar ruta completa al portapapeles")
+                    .help(l10n[.copyPathToClipboard])
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -163,24 +178,24 @@ public struct PathHeaderView: View {
                         let isFav = favorites.contains(currentPath)
                         Button(action: { onToggleFavorite(currentPath) }) {
                             Label(
-                                isFav ? "Quitar de favoritos" : "Marcar ruta como favorita",
+                                isFav ? l10n[.removeFromFavorites] : l10n[.addCurrentToFavorites],
                                 systemImage: isFav ? "star.slash" : "star"
                             )
                         }
                         Divider()
                     }
                     Button(action: copyPathToClipboard) {
-                        Label("Copiar ruta al portapapeles", systemImage: "doc.on.doc")
+                        Label(l10n[.copyPathToClipboard], systemImage: "doc.on.doc")
                     }
                     Button(action: pasteFromClipboard) {
-                        Label("Pegar ruta y navegar", systemImage: "doc.on.clipboard")
+                        Label(l10n.currentLanguage == .spanish ? "Pegar ruta y navegar" : "Paste path and go", systemImage: "doc.on.clipboard")
                     }
                     if inputPath != currentPath {
                         Button(action: {
                             inputPath = currentPath
                             isFieldFocused = false
                         }) {
-                            Label("Restablecer ruta actual", systemImage: "arrow.uturn.backward")
+                            Label(l10n.currentLanguage == .spanish ? "Restablecer ruta actual" : "Revert path", systemImage: "arrow.uturn.backward")
                         }
                     }
                 }
@@ -196,7 +211,7 @@ public struct PathHeaderView: View {
         }
     }
     
-    // MARK: - Favorites Menu (Requirement: lista de favoritos para navegar rápidamente)
+    // MARK: - Favorites Menu
     private var favoritesMenu: some View {
         Menu {
             if let onToggleFavorite = onToggleFavorite {
@@ -205,7 +220,7 @@ public struct PathHeaderView: View {
                     onToggleFavorite(currentPath)
                 }) {
                     Label(
-                        isFav ? "Quitar ruta actual de favoritos" : "Marcar ruta actual como favorita",
+                        isFav ? l10n[.removeFromFavorites] : l10n[.addCurrentToFavorites],
                         systemImage: isFav ? "star.slash" : "star"
                     )
                 }
@@ -214,9 +229,9 @@ public struct PathHeaderView: View {
             }
             
             if favorites.isEmpty {
-                Text("No hay rutas favoritas guardadas")
+                Text(l10n[.noSavedFavorites])
             } else {
-                Section("Rutas Favoritas") {
+                Section(l10n[.favorites]) {
                     ForEach(favorites, id: \.self) { favPath in
                         Button(action: {
                             inputPath = favPath
@@ -234,7 +249,7 @@ public struct PathHeaderView: View {
                 
                 if let onRemoveFavorite = onRemoveFavorite {
                     Divider()
-                    Menu("Eliminar de favoritos...") {
+                    Menu(l10n.currentLanguage == .spanish ? "Eliminar de favoritos..." : "Remove from favorites...") {
                         ForEach(favorites, id: \.self) { favPath in
                             Button(role: .destructive, action: {
                                 onRemoveFavorite(favPath)
@@ -252,7 +267,7 @@ public struct PathHeaderView: View {
         }
         .menuStyle(.borderlessButton)
         .frame(width: 14)
-        .help("Rutas favoritas (Clic para ver lista y navegar rápidamente)")
+        .help(l10n.currentLanguage == .spanish ? "Rutas favoritas (Clic para ver lista y navegar rápidamente)" : "Favorite paths (Click to view list and navigate)")
     }
     
     private func submitPath() {
@@ -289,4 +304,3 @@ public struct PathHeaderView: View {
         }
     }
 }
-
