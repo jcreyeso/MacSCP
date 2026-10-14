@@ -143,9 +143,43 @@ public final class AppViewModel: ObservableObject {
     
     // MARK: - SSH Connection Operations (Requirement 1)
     
+    private let manualConnectionsKey = "MacSCP_ManualConnections"
+    private let sudoAliasesKey = "MacSCP_SudoAliases"
+    
     public func loadSavedConnections() {
-        let loaded = SSHConfigParser.loadConnections()
+        let sudoAliases = Set(UserDefaults.standard.stringArray(forKey: sudoAliasesKey) ?? [])
+        var loaded = SSHConfigParser.loadConnections().map { conn -> SSHConnection in
+            var conn = conn
+            conn.useSudoSFTP = sudoAliases.contains(conn.alias)
+            return conn
+        }
+        if let data = UserDefaults.standard.data(forKey: manualConnectionsKey),
+           let manual = try? JSONDecoder().decode([SSHConnection].self, from: data) {
+            loaded.append(contentsOf: manual)
+        }
         self.connections = loaded
+    }
+    
+    public func addManualConnection(_ connection: SSHConnection) {
+        connections.append(connection)
+        saveConnectionSettings()
+    }
+    
+    /// Replaces a stored connection profile (matched by id) and persists the change.
+    public func updateConnection(_ connection: SSHConnection) {
+        guard let index = connections.firstIndex(where: { $0.id == connection.id }) else { return }
+        connections[index] = connection
+        saveConnectionSettings()
+    }
+    
+    /// Manual profiles are stored whole; ~/.ssh/config profiles only persist their sudo preference by alias.
+    private func saveConnectionSettings() {
+        let manual = connections.filter { $0.isManual }
+        if let data = try? JSONEncoder().encode(manual) {
+            UserDefaults.standard.set(data, forKey: manualConnectionsKey)
+        }
+        let sudoAliases = connections.filter { !$0.isManual && $0.useSudoSFTP }.map { $0.alias }
+        UserDefaults.standard.set(sudoAliases, forKey: sudoAliasesKey)
     }
     
     public func connect(to connection: SSHConnection) {

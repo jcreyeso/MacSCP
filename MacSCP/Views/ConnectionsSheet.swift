@@ -13,6 +13,7 @@ public struct ConnectionsSheet: View {
     @State private var manualPort = "22"
     @State private var manualIdentityFile = ""
     @State private var manualUseSudo = false
+    @State private var editingConnection: SSHConnection?
     
     public init(viewModel: AppViewModel) {
         self.viewModel = viewModel
@@ -41,7 +42,7 @@ public struct ConnectionsSheet: View {
                 .help(l10n[.reloadSSHConfig])
                 
                 Button(action: {
-                    showingManualSheet.toggle()
+                    openConnectionForm(editing: nil)
                 }) {
                     Label(l10n[.newConnection], systemImage: "plus")
                 }
@@ -100,6 +101,9 @@ public struct ConnectionsSheet: View {
                         isConnecting: viewModel.isConnecting,
                         onConnect: {
                             viewModel.connect(to: connection)
+                        },
+                        onEdit: {
+                            openConnectionForm(editing: connection)
                         }
                     )
                     .padding(.vertical, 4)
@@ -130,18 +134,47 @@ public struct ConnectionsSheet: View {
         }
     }
     
+    /// Opens the connection form, prefilled when editing an existing profile.
+    private func openConnectionForm(editing connection: SSHConnection?) {
+        editingConnection = connection
+        manualAlias = connection?.alias ?? ""
+        manualHost = connection?.hostName ?? ""
+        manualUser = connection?.user ?? ""
+        manualPort = String(connection?.port ?? 22)
+        manualIdentityFile = connection?.identityFile ?? ""
+        manualUseSudo = connection?.useSudoSFTP ?? false
+        showingManualSheet = true
+    }
+    
+    /// Profiles from ~/.ssh/config are read-only except for the sudo preference.
+    private var isEditingConfigConnection: Bool {
+        if let conn = editingConnection { return !conn.isManual }
+        return false
+    }
+    
     // Manual Connection Sheet
     private var manualConnectionSheet: some View {
         VStack(spacing: 16) {
-            Text(l10n.currentLanguage == .spanish ? "Agregar Conexión Manual" : "Add Manual Connection")
+            Text(editingConnection != nil
+                 ? l10n[.editConnection]
+                 : (l10n.currentLanguage == .spanish ? "Agregar Conexión Manual" : "Add Manual Connection"))
                 .font(.headline)
             
+            if isEditingConfigConnection {
+                Text(l10n.currentLanguage == .spanish ? "Los datos de conexión provienen de ~/.ssh/config." : "Connection details come from ~/.ssh/config.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
             Form {
-                TextField(l10n.currentLanguage == .spanish ? "Alias / Nombre:" : "Alias / Name:", text: $manualAlias, prompt: Text(l10n.currentLanguage == .spanish ? "ej. mi-servidor" : "e.g. my-server"))
-                TextField(l10n[.serverHost] + ":", text: $manualHost, prompt: Text("ej. 192.168.1.100 o mydomain.com"))
-                TextField(l10n[.user] + ":", text: $manualUser, prompt: Text("ej. root, ubuntu"))
-                TextField(l10n[.port] + ":", text: $manualPort, prompt: Text("22"))
-                TextField(l10n.currentLanguage == .spanish ? "Archivo de Clave (opcional):" : "Key File (optional):", text: $manualIdentityFile, prompt: Text("~/.ssh/id_rsa"))
+                Group {
+                    TextField(l10n.currentLanguage == .spanish ? "Alias / Nombre:" : "Alias / Name:", text: $manualAlias, prompt: Text(l10n.currentLanguage == .spanish ? "ej. mi-servidor" : "e.g. my-server"))
+                    TextField(l10n[.serverHost] + ":", text: $manualHost, prompt: Text("ej. 192.168.1.100 o mydomain.com"))
+                    TextField(l10n[.user] + ":", text: $manualUser, prompt: Text("ej. root, ubuntu"))
+                    TextField(l10n[.port] + ":", text: $manualPort, prompt: Text("22"))
+                    TextField(l10n.currentLanguage == .spanish ? "Archivo de Clave (opcional):" : "Key File (optional):", text: $manualIdentityFile, prompt: Text("~/.ssh/id_rsa"))
+                }
+                .disabled(isEditingConfigConnection)
                 
                 Toggle(l10n.currentLanguage == .spanish ? "Iniciar sesión SFTP con privilegios sudo (root)" : "Start SFTP session with sudo (root) privileges", isOn: $manualUseSudo)
                     .toggleStyle(.checkbox)
@@ -154,27 +187,46 @@ public struct ConnectionsSheet: View {
                     showingManualSheet = false
                 }
                 Spacer()
-                Button(l10n.currentLanguage == .spanish ? "Guardar y Conectar" : "Save and Connect") {
-                    let portInt = Int(manualPort) ?? 22
-                    let newConn = SSHConnection(
-                        alias: manualAlias.isEmpty ? manualHost : manualAlias,
-                        hostName: manualHost,
-                        user: manualUser,
-                        port: portInt,
-                        identityFile: manualIdentityFile.isEmpty ? nil : manualIdentityFile,
-                        isManual: true,
-                        useSudoSFTP: manualUseSudo
-                    )
-                    viewModel.connections.append(newConn)
-                    showingManualSheet = false
-                    viewModel.connect(to: newConn)
+                if let editing = editingConnection {
+                    Button(l10n[.save]) {
+                        var conn = editing
+                        if conn.isManual {
+                            conn.alias = manualAlias.isEmpty ? manualHost : manualAlias
+                            conn.hostName = manualHost
+                            conn.user = manualUser
+                            conn.port = Int(manualPort) ?? 22
+                            conn.identityFile = manualIdentityFile.isEmpty ? nil : manualIdentityFile
+                        }
+                        conn.useSudoSFTP = manualUseSudo
+                        viewModel.updateConnection(conn)
+                        showingManualSheet = false
+                    }
+                    .disabled(manualHost.isEmpty)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                } else {
+                    Button(l10n.currentLanguage == .spanish ? "Guardar y Conectar" : "Save and Connect") {
+                        let portInt = Int(manualPort) ?? 22
+                        let newConn = SSHConnection(
+                            alias: manualAlias.isEmpty ? manualHost : manualAlias,
+                            hostName: manualHost,
+                            user: manualUser,
+                            port: portInt,
+                            identityFile: manualIdentityFile.isEmpty ? nil : manualIdentityFile,
+                            isManual: true,
+                            useSudoSFTP: manualUseSudo
+                        )
+                        viewModel.addManualConnection(newConn)
+                        showingManualSheet = false
+                        viewModel.connect(to: newConn)
+                    }
+                    .disabled(manualHost.isEmpty)
+                    .buttonStyle(.borderedProminent)
                 }
-                .disabled(manualHost.isEmpty)
-                .buttonStyle(.borderedProminent)
             }
             .padding()
         }
-        .frame(width: 440, height: 310)
+        .frame(width: 440, height: isEditingConfigConnection ? 335 : 310)
     }
 }
 
@@ -184,6 +236,7 @@ struct ConnectionRowView: View {
     let isCurrent: Bool
     let isConnecting: Bool
     let onConnect: () -> Void
+    let onEdit: () -> Void
     @ObservedObject private var l10n = LocalizationService.shared
     
     var body: some View {
@@ -247,6 +300,12 @@ struct ConnectionRowView: View {
             }
             
             Spacer()
+            
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+            }
+            .buttonStyle(.borderless)
+            .help(l10n[.editConnection])
             
             Button(action: onConnect) {
                 if isCurrent {
