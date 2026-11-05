@@ -1,20 +1,83 @@
 import SwiftUI
 import AppKit
 
+/// The window content: the tab bar above the contents of the selected tab.
 public struct MainView: View {
-    @StateObject private var viewModel = AppViewModel()
+    @ObservedObject private var tabManager: TabManager
     @ObservedObject private var l10n = LocalizationService.shared
     
-    // Split view ratio state (Requirement 2)
+    // Split view ratio state (Requirement 2), shared by all tabs
     @State private var splitRatio: CGFloat = 0.50
+    
+    public init(tabManager: TabManager) {
+        self.tabManager = tabManager
+    }
+    
+    public var body: some View {
+        VStack(spacing: 0) {
+            TabBarView(manager: tabManager)
+            
+            Divider()
+            
+            TabContentView(viewModel: tabManager.selectedTab, splitRatio: $splitRatio)
+                .id(tabManager.selectedTabID)
+        }
+        .frame(minWidth: 860, minHeight: 520)
+        .background(WindowReader { [weak tabManager] window in
+            tabManager?.window = window
+        })
+        .confirmationDialog(
+            l10n.currentLanguage == .spanish ? "¿Cerrar esta pestaña?" : "Close this tab?",
+            isPresented: isShowingCloseConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(l10n.currentLanguage == .spanish ? "Cerrar pestaña" : "Close Tab", role: .destructive) {
+                tabManager.confirmPendingClose()
+            }
+            Button(l10n[.cancel], role: .cancel) {
+                tabManager.tabPendingClose = nil
+            }
+        } message: {
+            Text(l10n.currentLanguage == .spanish
+                 ? "Se cancelarán las transferencias en curso y los archivos abiertos en Nextpad++ dejarán de subirse automáticamente."
+                 : "Transfers in progress will be cancelled, and files open in Nextpad++ will stop uploading automatically.")
+        }
+    }
+    
+    private var isShowingCloseConfirmation: Binding<Bool> {
+        Binding(
+            get: { tabManager.tabPendingClose != nil },
+            set: { isPresented in
+                if !isPresented {
+                    tabManager.tabPendingClose = nil
+                }
+            }
+        )
+    }
+}
+
+/// Everything inside one tab: its toolbar, its two panels and its transfers.
+private struct TabContentView: View {
+    @ObservedObject private var viewModel: AppViewModel
+    @ObservedObject private var fileWatchService = FileWatchService.shared
+    @ObservedObject private var l10n = LocalizationService.shared
+    
+    @Binding private var splitRatio: CGFloat
     @State private var isDraggingSplitter: Bool = false
     @State private var isHoveringSplitter: Bool = false
     @State private var dragStartRatio: CGFloat = 0.50
     @State private var isShowingSettingsSheet: Bool = false
     
-    public init() {}
+    init(viewModel: AppViewModel, splitRatio: Binding<CGFloat>) {
+        self.viewModel = viewModel
+        self._splitRatio = splitRatio
+    }
     
-    public var body: some View {
+    private var monitoredFiles: [MonitoredFile] {
+        fileWatchService.monitoredFiles.filter { $0.ownerID == viewModel.id }
+    }
+    
+    var body: some View {
         ZStack {
             VStack(spacing: 0) {
                 // Top Toolbar (Connection status, SSH Manager, Sudo elevation, About & Settings)
@@ -23,7 +86,7 @@ public struct MainView: View {
                 Divider()
                 
                 // Active file monitoring indicator banner
-                if !viewModel.fileWatchService.monitoredFiles.isEmpty {
+                if !monitoredFiles.isEmpty {
                     activeEditingBanner
                     Divider()
                 }
@@ -193,7 +256,6 @@ public struct MainView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .frame(minWidth: 860, minHeight: 520)
         .sheet(isPresented: $viewModel.isShowingConnectionsSheet) {
             ConnectionsSheet(viewModel: viewModel)
         }
@@ -427,7 +489,7 @@ public struct MainView: View {
                 .font(.caption)
                 .fontWeight(.bold)
             
-            ForEach(viewModel.fileWatchService.monitoredFiles) { file in
+            ForEach(monitoredFiles) { file in
                 HStack(spacing: 5) {
                     if file.isElevated {
                         Image(systemName: "lock.shield.fill")
@@ -438,7 +500,7 @@ public struct MainView: View {
                         .font(.caption)
                     
                     Button(action: {
-                        viewModel.fileWatchService.removeMonitor(for: file.remotePath)
+                        fileWatchService.removeMonitor(for: file.remotePath, ownerID: viewModel.id)
                     }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 8, weight: .bold))
@@ -451,6 +513,7 @@ public struct MainView: View {
                 .padding(.vertical, 2)
                 .background(Color.orange.opacity(0.18))
                 .cornerRadius(4)
+                .help(file.remotePath)
             }
             
             Text(l10n.currentLanguage == .spanish ? "(Cualquier cambio guardado se cargará automáticamente al servidor)" : "(Any saved changes will be automatically uploaded to the server)")

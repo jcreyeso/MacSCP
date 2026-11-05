@@ -56,7 +56,13 @@ public struct FileItem: Identifiable, Hashable {
         if isDirectory {
             return "—"
         }
-        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        // Files under 100 MB stay in KB (or bytes) rather than switching to MB.
+        if size < 100_000_000 {
+            formatter.allowedUnits = [.useBytes, .useKB]
+        }
+        return formatter.string(fromByteCount: size)
     }
     
     /// Formatted date string.

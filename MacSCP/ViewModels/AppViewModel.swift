@@ -31,7 +31,17 @@ public struct ToastItem: Identifiable {
 }
 
 @MainActor
-public final class AppViewModel: ObservableObject {
+public final class AppViewModel: ObservableObject, Identifiable {
+    /// Identifies the tab this view model belongs to.
+    public let id = UUID()
+    
+    // MARK: - Tab State
+    /// False while another tab is on screen, so toasts must wait for the user to come back.
+    public var isTabActive = true
+    /// An error was reported while this tab was not on screen.
+    @Published public var hasUnseenError: Bool = false
+    private var isClosed = false
+    
     // MARK: - SSH Connections
     @Published public var connections: [SSHConnection] = []
     @Published public var connectionSearchText: String = ""
@@ -118,8 +128,8 @@ public final class AppViewModel: ObservableObject {
     public let fileWatchService = FileWatchService.shared
     public let localManager = LocalFileManager.shared
     
-    public init() {
-        self.localPath = localManager.homePath
+    public init(localPath: String? = nil) {
+        self.localPath = localPath ?? localManager.homePath
         loadSavedConnections()
         loadLocalFiles()
         loadFavorites()
@@ -138,6 +148,45 @@ public final class AppViewModel: ObservableObject {
             $0.alias.lowercased().contains(query) ||
             $0.hostName.lowercased().contains(query) ||
             $0.user.lowercased().contains(query)
+        }
+    }
+    
+    // MARK: - Tab Lifecycle
+    
+    public var hasActiveTransfer: Bool {
+        activeTransfer != nil || currentTransferTask != nil
+    }
+    
+    /// Closing the tab now would stop a transfer or the auto-upload of a file being edited.
+    public var hasActiveWork: Bool {
+        hasActiveTransfer
+            || fileWatchService.monitoredFiles.contains { $0.ownerID == id }
+    }
+    
+    /// Picks up what other tabs may have changed, since the settings and local files are shared.
+    public func tabDidBecomeActive() {
+        isTabActive = true
+        hasUnseenError = false
+        loadSavedConnections()
+        loadFavorites()
+        loadSortSettings()
+        loadRemoteCopyRecentPaths()
+        loadLocalFiles()
+        if let toast = activeToast {
+            scheduleToastDismissal(for: toast.message)
+        }
+    }
+    
+    /// Ends everything this tab has running. The tab cannot be used afterwards.
+    public func closeSession() {
+        isClosed = true
+        transferState.cancel()
+        currentTransferTask?.cancel()
+        currentTransferTask = nil
+        fileWatchService.clearMonitors(ownerID: id)
+        fileWatchService.removeFileSavedHandler(ownerID: id)
+        Task {
+            await sftpClient.disconnect()
         }
     }
     
@@ -189,6 +238,11 @@ public final class AppViewModel: ObservableObject {
         Task {
             do {
                 let resolvedHome = try await sftpClient.connect(connection: connection)
+                // The tab was closed while connecting, so nothing would ever end this session.
+                guard !self.isClosed else {
+                    await self.sftpClient.disconnect()
+                    return
+                }
                 let cleanHome = resolvedHome.replacingOccurrences(of: #"/+"#, with: "/", options: .regularExpression)
                 self.currentConnection = connection
                 self.remoteHomePath = cleanHome
@@ -248,7 +302,7 @@ public final class AppViewModel: ObservableObject {
     public func disconnect() {
         Task {
             await sftpClient.disconnect()
-            fileWatchService.clearAll()
+            fileWatchService.clearMonitors(ownerID: id)
             self.currentConnection = nil
             self.remoteFiles = []
             self.remotePath = ""
@@ -465,7 +519,7 @@ public final class AppViewModel: ObservableObject {
         
         let localCache = fileWatchService.localCacheURL(
             for: item.path,
-            connectionAlias: connection.alias
+            connection: connection
         )
         
         let prefix = withSudo ? " con sudo 🛡️" : ""
@@ -482,22 +536,18 @@ public final class AppViewModel: ObservableObject {
                     )
                     try data.write(to: localCache, options: .atomic)
                 } else {
-                    try await self.sftpClient.downloadFile(
-                        remotePath: item.path,
-                        to: localCache
-                    ) { [weak self] progress in
-                        Task { @MainActor [weak self] in
-                            self?.activeTransfer = progress
-                        }
-                    }
+                    try await self.downloadForEditing(item, to: localCache)
                     self.activeTransfer = nil
                 }
+                
+                self.fileWatchService.markLocalCopyRefreshed(at: localCache)
                 
                 // Open and start watching
                 self.fileWatchService.openAndWatch(
                     localURL: localCache,
                     remotePath: item.path,
                     connectionAlias: connection.alias,
+                    ownerID: self.id,
                     isElevated: withSudo
                 )
                 
@@ -521,8 +571,30 @@ public final class AppViewModel: ObservableObject {
         }
     }
     
+    /// Downloads to a temporary file and swaps it in only once complete. The cache file may
+    /// already be watched, and a watcher must never upload a partial or failed download.
+    private func downloadForEditing(_ item: FileItem, to localCache: URL) async throws {
+        let fileManager = FileManager.default
+        let download = localCache
+            .deletingLastPathComponent()
+            .appendingPathComponent(".\(UUID().uuidString).download")
+        defer { try? fileManager.removeItem(at: download) }
+        
+        try await sftpClient.downloadFile(remotePath: item.path, to: download) { [weak self] progress in
+            Task { @MainActor [weak self] in
+                self?.activeTransfer = progress
+            }
+        }
+        
+        if fileManager.fileExists(atPath: localCache.path) {
+            _ = try fileManager.replaceItemAt(localCache, withItemAt: download)
+        } else {
+            try fileManager.moveItem(at: download, to: localCache)
+        }
+    }
+    
     private func setupWatchServiceCallback() {
-        fileWatchService.onFileSaved = { [weak self] monitoredFile in
+        fileWatchService.setFileSavedHandler(ownerID: id) { [weak self] monitoredFile in
             guard let self = self else { return }
             self.handleMonitoredFileSaved(monitoredFile)
         }
@@ -1052,6 +1124,17 @@ public final class AppViewModel: ObservableObject {
             self.activeToast = ToastItem(message: message, type: type)
         }
         
+        // A tab that is not on screen keeps its toast until the user comes back to it.
+        guard isTabActive else {
+            if type == .error {
+                hasUnseenError = true
+            }
+            return
+        }
+        scheduleToastDismissal(for: message)
+    }
+    
+    private func scheduleToastDismissal(for message: String) {
         // Auto-dismiss after 3.5 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { [weak self] in
             guard let self = self else { return }

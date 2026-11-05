@@ -3,8 +3,8 @@ import AppKit
 
 // MARK: - App Version Configuration
 public enum AppVersion {
-    public static let marketingVersion = "1.2.0"
-    public static let buildNumber = "2026.10.13"
+    public static let marketingVersion = "1.3.0"
+    public static let buildNumber = "2026.11.05"
     public static let appName = "MacSCP"
     public static let githubURL = URL(string: "https://github.com/jcreyeso/MacSCP")!
     
@@ -55,10 +55,14 @@ public enum AppVersion {
 struct MacSCPApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @ObservedObject private var l10n = LocalizationService.shared
+    @StateObject private var tabManager = TabManager()
     
     var body: some Scene {
         WindowGroup {
-            MainView()
+            MainView(tabManager: tabManager)
+                .onAppear {
+                    appDelegate.tabManager = tabManager
+                }
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
@@ -69,7 +73,7 @@ struct MacSCPApp: App {
                 }
             }
             SidebarCommands()
-            CommandGroup(replacing: .newItem) { }
+            TabCommands(manager: tabManager)
         }
         
         Settings {
@@ -79,8 +83,13 @@ struct MacSCPApp: App {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var tabManager: TabManager?
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.regular)
+        
+        // The app has its own tabs, so hide the system's window tab menu items.
+        NSWindow.allowsAutomaticWindowTabbing = false
         
         // Ensure app icon is displayed in Dock and App Switcher across all launch environments
         if let iconImage = NSImage(named: "AppIcon") {
@@ -103,6 +112,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 window.title = "MacSCP"
             }
         }
+    }
+    
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        tabManager?.confirmQuit() == false ? .terminateCancel : .terminateNow
+    }
+    
+    func applicationWillTerminate(_ notification: Notification) {
+        FileWatchService.shared.removeAllLocalCopies()
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

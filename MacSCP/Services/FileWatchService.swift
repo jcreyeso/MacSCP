@@ -1,5 +1,6 @@
-import Foundation
 import AppKit
+import CryptoKit
+import Foundation
 
 /// Represents an active file being edited in Nextpad++ with auto-sync to remote server.
 public final class MonitoredFile: Identifiable {
@@ -7,6 +8,8 @@ public final class MonitoredFile: Identifiable {
     public let localURL: URL
     public let remotePath: String
     public let connectionAlias: String
+    /// The tab that opened this file. Its changes are uploaded through that tab's connection.
+    public let ownerID: UUID
     public var lastModifiedDate: Date
     public var isUploading = false
     public let isElevated: Bool
@@ -18,12 +21,14 @@ public final class MonitoredFile: Identifiable {
         localURL: URL,
         remotePath: String,
         connectionAlias: String,
+        ownerID: UUID,
         initialDate: Date,
         isElevated: Bool = false
     ) {
         self.localURL = localURL
         self.remotePath = remotePath
         self.connectionAlias = connectionAlias
+        self.ownerID = ownerID
         self.lastModifiedDate = initialDate
         self.isElevated = isElevated
     }
@@ -74,21 +79,47 @@ public final class FileWatchService: ObservableObject {
     @Published public var lastSyncMessage: String?
     
     private var pollTimer: Timer?
-    private var pendingUploadWorkItem: [String: DispatchWorkItem] = [:]
-    
-    public var onFileSaved: ((_ file: MonitoredFile) -> Void)?
+    private var pendingUploadWorkItem: [UUID: DispatchWorkItem] = [:]
+    private var fileSavedHandlers: [UUID: (_ file: MonitoredFile) -> Void] = [:]
     
     private init() {
         startPollingTimer()
     }
     
-    /// Prepares local cache directory for the remote file.
-    public func localCacheURL(for remotePath: String, connectionAlias: String) -> URL {
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        let dir = caches
+    /// Registers the code that uploads saved files opened by the tab `ownerID`.
+    public func setFileSavedHandler(ownerID: UUID, handler: @escaping (_ file: MonitoredFile) -> Void) {
+        fileSavedHandlers[ownerID] = handler
+    }
+    
+    public func removeFileSavedHandler(ownerID: UUID) {
+        fileSavedHandlers[ownerID] = nil
+    }
+    
+    private var remoteEditCacheURL: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
             .appendingPathComponent("MacSCP", isDirectory: true)
             .appendingPathComponent("RemoteEdit", isDirectory: true)
-            .appendingPathComponent(connectionAlias, isDirectory: true)
+    }
+    
+    /// Stops all watching and deletes every local copy of a remote file. Called when the app quits.
+    public func removeAllLocalCopies() {
+        for file in monitoredFiles {
+            file.stopMonitoring()
+        }
+        monitoredFiles.removeAll()
+        try? FileManager.default.removeItem(at: remoteEditCacheURL)
+    }
+    
+    /// Prepares local cache directory for the remote file.
+    /// Each server and remote folder gets its own directory, so files with the same name
+    /// never share a local copy. The file keeps its name for the editor's title bar.
+    public func localCacheURL(for remotePath: String, connection: SSHConnection) -> URL {
+        let remoteFolder = (remotePath as NSString).deletingLastPathComponent
+        let digest = SHA256.hash(data: Data("\(connection.destinationString):\(connection.port):\(remoteFolder)".utf8))
+        let folderKey = digest.prefix(8).map { String(format: "%02x", $0) }.joined()
+        let dir = remoteEditCacheURL
+            .appendingPathComponent(connection.alias, isDirectory: true)
+            .appendingPathComponent(folderKey, isDirectory: true)
         
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         
@@ -101,16 +132,18 @@ public final class FileWatchService: ObservableObject {
         localURL: URL,
         remotePath: String,
         connectionAlias: String,
+        ownerID: UUID,
         isElevated: Bool = false
     ) {
         // Stop any existing monitor for this exact file
-        removeMonitor(for: remotePath)
+        removeMonitor(for: remotePath, ownerID: ownerID)
         
         let modDate = (try? localURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
         let monitored = MonitoredFile(
             localURL: localURL,
             remotePath: remotePath,
             connectionAlias: connectionAlias,
+            ownerID: ownerID,
             initialDate: modDate,
             isElevated: isElevated
         )
@@ -124,6 +157,16 @@ public final class FileWatchService: ObservableObject {
         
         // Launch Nextpad++
         openInNextpad(fileURL: localURL)
+    }
+    
+    /// Records that a fresh download replaced the local copy, so it isn't taken for a user's save.
+    public func markLocalCopyRefreshed(at localURL: URL) {
+        guard let date = try? localURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else {
+            return
+        }
+        for monitored in monitoredFiles where monitored.localURL == localURL {
+            monitored.lastModifiedDate = date
+        }
     }
     
     /// Launches Nextpad++.app with the specified file URL.
@@ -167,16 +210,20 @@ public final class FileWatchService: ObservableObject {
         
         monitored.lastModifiedDate = currentDate
         
+        // Tabs on the same server can share a local copy, and one save needs only one upload.
+        guard monitoredFiles.first(where: { $0.localURL == monitored.localURL }) === monitored else {
+            return
+        }
+        
         // Debounce by 400ms to allow editor to finish disk write
-        let pathKey = monitored.remotePath
-        pendingUploadWorkItem[pathKey]?.cancel()
+        pendingUploadWorkItem[monitored.id]?.cancel()
         
         let workItem = DispatchWorkItem { [weak self, weak monitored] in
             guard let self = self, let monitored = monitored else { return }
-            self.onFileSaved?(monitored)
+            self.fileSavedHandlers[monitored.ownerID]?(monitored)
         }
         
-        pendingUploadWorkItem[pathKey] = workItem
+        pendingUploadWorkItem[monitored.id] = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: workItem)
     }
     
@@ -192,17 +239,18 @@ public final class FileWatchService: ObservableObject {
         }
     }
     
-    public func removeMonitor(for remotePath: String) {
-        if let idx = monitoredFiles.firstIndex(where: { $0.remotePath == remotePath }) {
+    public func removeMonitor(for remotePath: String, ownerID: UUID) {
+        if let idx = monitoredFiles.firstIndex(where: { $0.remotePath == remotePath && $0.ownerID == ownerID }) {
             monitoredFiles[idx].stopMonitoring()
             monitoredFiles.remove(at: idx)
         }
     }
     
-    public func clearAll() {
-        for file in monitoredFiles {
+    /// Stops watching the files opened by one tab, leaving other tabs' files alone.
+    public func clearMonitors(ownerID: UUID) {
+        for file in monitoredFiles where file.ownerID == ownerID {
             file.stopMonitoring()
         }
-        monitoredFiles.removeAll()
+        monitoredFiles.removeAll { $0.ownerID == ownerID }
     }
 }

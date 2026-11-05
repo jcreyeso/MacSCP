@@ -39,6 +39,7 @@ public struct FileBrowserPanel: View {
     @State private var newFolderName: String = ""
     @State private var renamingItemPath: String? = nil
     @State private var inlineEditingName: String = ""
+    @State private var typeSelectScrollTarget: String? = nil
     
     public init(
         isRemote: Bool,
@@ -164,34 +165,48 @@ public struct FileBrowserPanel: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(sortedItems, id: \.path, selection: $selectedPath) { item in
-                    FileRowView(
-                        item: item,
-                        isRemote: isRemote,
-                        isRenaming: renamingItemPath == item.path,
-                        editingName: $inlineEditingName,
-                        onCommitRename: { newName in
-                            commitInlineRename(for: item, newName: newName)
-                        },
-                        onCancelRename: {
-                            cancelInlineRename()
-                        },
-                        onDoubleClick: { onDoubleClick(item) }
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture(count: 2) {
-                        if renamingItemPath != item.path {
-                            onDoubleClick(item)
+                ScrollViewReader { proxy in
+                    List(sortedItems, id: \.path, selection: $selectedPath) { item in
+                        FileRowView(
+                            item: item,
+                            isRemote: isRemote,
+                            isRenaming: renamingItemPath == item.path,
+                            editingName: $inlineEditingName,
+                            onCommitRename: { newName in
+                                commitInlineRename(for: item, newName: newName)
+                            },
+                            onCancelRename: {
+                                cancelInlineRename()
+                            },
+                            onDoubleClick: { onDoubleClick(item) }
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            if renamingItemPath != item.path {
+                                onDoubleClick(item)
+                            }
+                        }
+                        .contextMenu {
+                            buildContextMenu(for: item)
                         }
                     }
-                    .contextMenu {
-                        buildContextMenu(for: item)
+                    .listStyle(.inset(alternatesRowBackgrounds: true))
+                    .onChange(of: typeSelectScrollTarget) { target in
+                        guard let target else { return }
+                        proxy.scrollTo(target)
+                        typeSelectScrollTarget = nil
                     }
                 }
-                .listStyle(.inset(alternatesRowBackgrounds: true))
             }
         }
         .background(Color(NSColor.controlBackgroundColor))
+        .background(
+            TypeSelectMonitor(
+                isInitiallyActive: !isRemote,
+                onType: handleTypeSelect,
+                onOpen: handleOpenSelection
+            )
+        )
         .alert(l10n[.newFolder], isPresented: $isShowingNewFolderDialog) {
             TextField(l10n[.folderName], text: $newFolderName)
             Button(l10n[.create]) {
@@ -247,6 +262,35 @@ public struct FileBrowserPanel: View {
         }
         
         return parentItems + sorted
+    }
+    
+    // MARK: - Type to Select
+    /// Selects the first displayed item whose name starts with `typed`, like Finder.
+    /// Returns false when the panel has no list to search, so the key press is left alone.
+    private func handleTypeSelect(_ typed: String) -> Bool {
+        guard !isLoading, !items.isEmpty else { return false }
+        let match = sortedItems.first { item in
+            !item.isParentDirectory && item.name.range(
+                of: typed,
+                options: [.anchored, .caseInsensitive, .diacriticInsensitive]
+            ) != nil
+        }
+        if let match {
+            selectedPath = match.path
+            typeSelectScrollTarget = match.path
+        }
+        return true
+    }
+    
+    /// Opens the selected item, the same as double-clicking it.
+    /// Returns false when nothing is selected, so the key press is left alone.
+    private func handleOpenSelection() -> Bool {
+        guard !isLoading, renamingItemPath == nil,
+              let item = items.first(where: { $0.path == selectedPath }) else {
+            return false
+        }
+        onDoubleClick(item)
+        return true
     }
     
     // MARK: - Column Header Bar
@@ -470,6 +514,151 @@ public struct FileBrowserPanel: View {
     private func cancelInlineRename() {
         renamingItemPath = nil
         inlineEditingName = ""
+    }
+}
+
+/// Sends typed characters to the panel it sits behind, while that panel is the active one.
+private struct TypeSelectMonitor: NSViewRepresentable {
+    let isInitiallyActive: Bool
+    let onType: (String) -> Bool
+    let onOpen: () -> Bool
+    
+    func makeNSView(context: Context) -> TypeSelectMonitorView {
+        TypeSelectMonitorView()
+    }
+    
+    func updateNSView(_ view: TypeSelectMonitorView, context: Context) {
+        view.isInitiallyActive = isInitiallyActive
+        view.onType = onType
+        view.onOpen = onOpen
+    }
+}
+
+private final class TypeSelectMonitorView: NSView {
+    /// Pause after which the next key press starts a new search.
+    private static let resetInterval: TimeInterval = 1.0
+    private static weak var lastActivePanel: TypeSelectMonitorView?
+    private static let returnKeyCode: UInt16 = 36
+    private static let keypadEnterKeyCode: UInt16 = 76
+    
+    var isInitiallyActive = false
+    var onType: ((String) -> Bool)?
+    var onOpen: (() -> Bool)?
+    
+    private var monitor: Any?
+    private var typedText = ""
+    private var lastKeyTimestamp: TimeInterval = 0
+    
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
+        guard window != nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            return self.handle(event)
+        }
+    }
+    
+    private func handle(_ event: NSEvent) -> NSEvent? {
+        guard let window, event.window === window else { return event }
+        
+        if event.type != .keyDown {
+            typedText = ""
+            if frameInWindow.contains(event.locationInWindow) {
+                Self.lastActivePanel = self
+            }
+            return event
+        }
+        
+        guard isActivePanel(in: window),
+              window.attachedSheet == nil,
+              !(window.firstResponder is NSText) else {
+            return event
+        }
+        
+        // Opening a folder removes focus from the list, so remember which panel had it.
+        Self.lastActivePanel = self
+        
+        // Command and Control combinations are shortcuts.
+        guard event.modifierFlags.intersection([.command, .control]).isEmpty else {
+            typedText = ""
+            return event
+        }
+        
+        if event.keyCode == Self.returnKeyCode || event.keyCode == Self.keypadEnterKeyCode {
+            typedText = ""
+            // Holding the key down must not open the same file over and over.
+            return event.isARepeat || onOpen?() == true ? nil : event
+        }
+        
+        // Arrows and other control keys are not search text.
+        guard let characters = event.characters, !characters.isEmpty,
+              characters.unicodeScalars.allSatisfy(Self.isTypeable) else {
+            typedText = ""
+            return event
+        }
+        
+        let isNewSearch = event.timestamp - lastKeyTimestamp > Self.resetInterval
+        let text = (isNewSearch ? "" : typedText) + characters
+        
+        // A leading space is not the start of a file name.
+        guard !text.hasPrefix(" "), let onType, onType(text) else {
+            typedText = ""
+            return event
+        }
+        
+        typedText = text
+        lastKeyTimestamp = event.timestamp
+        focusList(in: window)
+        return nil
+    }
+    
+    private var frameInWindow: NSRect {
+        convert(bounds, to: nil)
+    }
+    
+    private func isActivePanel(in window: NSWindow) -> Bool {
+        // Keyboard focus decides first, so Tab can move between the panels.
+        if let list = window.firstResponder as? NSTableView {
+            let visible = list.convert(list.visibleRect, to: nil)
+            return frameInWindow.contains(NSPoint(x: visible.midX, y: visible.midY))
+        }
+        if let active = Self.lastActivePanel, active.window === window {
+            return active === self
+        }
+        return isInitiallyActive
+    }
+    
+    /// Gives the list keyboard focus so the arrow keys continue from the match.
+    private func focusList(in window: NSWindow) {
+        guard !(window.firstResponder is NSTableView),
+              let contentView = window.contentView else { return }
+        let frame = frameInWindow
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        var view = contentView.hitTest(contentView.convert(center, from: nil))
+        while let current = view, !(current is NSTableView) {
+            view = current.superview
+        }
+        if let table = view {
+            window.makeFirstResponder(table)
+        }
+    }
+    
+    private static func isTypeable(_ scalar: Unicode.Scalar) -> Bool {
+        // Function keys and arrows arrive as private-use characters.
+        !CharacterSet.controlCharacters.contains(scalar)
+            && !CharacterSet(charactersIn: "\u{F700}"..."\u{F8FF}").contains(scalar)
+    }
+    
+    deinit {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 }
 
